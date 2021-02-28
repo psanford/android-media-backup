@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"gioui.org/app"
+	_ "gioui.org/app/permission/storage"
 	"github.com/psanford/android-media-backup-go-experiment/ui"
 )
 
