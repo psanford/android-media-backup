@@ -88,8 +88,23 @@ func (ui *UI) loop(w *app.Window) error {
 
 	th := material.NewTheme(gofont.Collection())
 
-	var permResult <-chan jgo.PermResult
-	var viewEvent app.ViewEvent
+	var (
+		permResult <-chan jgo.PermResult
+		viewEvent  app.ViewEvent
+
+		manualUpload = make(chan chan struct{})
+	)
+
+	go func() {
+		for result := range manualUpload {
+			upload.Upload()
+			select {
+			case result <- struct{}{}:
+			default:
+			}
+			w.Invalidate()
+		}
+	}()
 
 	var ops op.Ops
 	for {
@@ -134,19 +149,6 @@ func (ui *UI) loop(w *app.Window) error {
 					})
 				}
 
-				var logWifiOnce sync.Once
-				for wifiStateBtn.Clicked() {
-					logWifiOnce.Do(func() {
-						plog.Printf("attempt get wifi state")
-						state, err := jgo.ConnectionState(viewEvent)
-						if err != nil {
-							plog.Printf("get wifi state err: %s", err)
-						} else {
-							plog.Printf("wifi state: %s", state)
-						}
-					})
-				}
-
 				if urlEditor.Text() != url {
 					url = urlEditor.Text()
 					ui.db.SetURL(url)
@@ -164,8 +166,17 @@ func (ui *UI) loop(w *app.Window) error {
 
 				if testUploadClicked {
 					plog.Printf("start test upload")
-					err := upload.Upload()
-					plog.Printf("test upload complete, err=%s", err)
+					result := make(chan struct{}, 1)
+					select {
+					case manualUpload <- result:
+						uploadInProgress = true
+						go func() {
+							<-result
+							uploadInProgress = false
+						}()
+					default:
+						plog.Printf("upload already in progress")
+					}
 				}
 
 				if wifiOnlyToggle.Changed() {
@@ -225,9 +236,9 @@ var (
 		SingleLine: true,
 		Submit:     true,
 	}
-	uploadBtn    = new(widget.Clickable)
-	resetBtn     = new(widget.Clickable)
-	wifiStateBtn = new(widget.Clickable)
+	uploadInProgress = false
+	uploadBtn        = new(widget.Clickable)
+	resetBtn         = new(widget.Clickable)
 
 	settingsList = &layout.List{
 		Axis: layout.Vertical,
@@ -385,9 +396,14 @@ func drawSettings(gtx layout.Context, th *material.Theme) layout.Dimensions {
 			)
 		},
 
-		material.Button(th, uploadBtn, "Test Upload").Layout,
+		func(gtx layout.Context) layout.Dimensions {
+			if uploadInProgress || !enabledToggle.Value {
+				gtx = gtx.Disabled()
+			}
+			btn := material.Button(th, uploadBtn, "Text Upload")
+			return btn.Layout(gtx)
+		},
 		material.Button(th, resetBtn, "Reset Files").Layout,
-		material.Button(th, wifiStateBtn, "Log wifi state").Layout,
 	}
 
 	return settingsList.Layout(gtx, len(widgets), func(gtx layout.Context, i int) layout.Dimensions {

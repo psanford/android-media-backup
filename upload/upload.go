@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/psanford/android-media-backup-go-experiment/db"
+	"github.com/psanford/android-media-backup-go-experiment/jgo"
 	"github.com/psanford/android-media-backup-go-experiment/ui/plog"
 )
 
@@ -74,7 +75,23 @@ func Upload() error {
 	}
 
 	for _, f := range files {
-		// XXXX check network state
+		enabled, _ := store.Enabled()
+		if !enabled {
+			plog.Printf("service has been disabled, deferring remaining uploads")
+			return errors.New("service disabled")
+		}
+
+		connState, err := jgo.ConnectionState()
+		if err != nil || connState == jgo.ConnStateUnknown || connState == jgo.NoNetwork {
+			plog.Printf("no network connection, deferring remaining uploads")
+			return errors.New("no network")
+		}
+
+		allowMobile, _ := store.AllowMobileUpload()
+		if !allowMobile && connState < jgo.Wifi {
+			plog.Printf("not on wifi, deferring remaining uploads")
+			return errors.New("no wifi")
+		}
 
 		filename := f.Name()
 		fpath := filepath.Join(p, filename)

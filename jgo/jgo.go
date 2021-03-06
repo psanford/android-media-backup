@@ -91,7 +91,7 @@ const (
 	Wifi             ConnState = 1
 )
 
-func ConnectionState(viewEvt app.ViewEvent) (ConnState, error) {
+func ConnectionState() (ConnState, error) {
 	jvm := jni.JVMFor(app.JavaVM())
 	log.Printf("AppCtx: %d", app.AppContext())
 	var state = -2
