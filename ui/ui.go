@@ -18,23 +18,33 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
+	"github.com/psanford/android-media-backup-go-experiment/db"
 	"github.com/psanford/android-media-backup-go-experiment/jgo"
+	"github.com/psanford/android-media-backup-go-experiment/ui/plog"
+	"github.com/psanford/android-media-backup-go-experiment/upload"
 )
 
 type UI struct {
+	db *db.DB
 }
 
 func New() *UI {
-	return &UI{}
+	store, err := db.Open()
+	if err != nil {
+		panic(err)
+	}
+	return &UI{
+		db: store,
+	}
 }
 
 func (ui *UI) Run() error {
 	w := app.NewWindow(app.Size(unit.Dp(800), unit.Dp(700)))
 	dataDir, err := app.DataDir()
 	if err != nil {
-		logF("DataDir err: %s", err)
+		plog.Printf("DataDir err: %s", err)
 	} else {
-		logF("DataDir: %s", dataDir)
+		plog.Printf("DataDir: %s", dataDir)
 	}
 
 	if err := loop(w); err != nil {
@@ -42,12 +52,6 @@ func (ui *UI) Run() error {
 	}
 
 	return nil
-}
-
-func logF(format string, args ...interface{}) {
-	str := fmt.Sprintf(format, args...)
-	log.Print(str)
-	logText.Insert(fmt.Sprintf("[%s] %s\n", time.Now().Format(time.RFC3339), str))
 }
 
 func loop(w *app.Window) error {
@@ -61,19 +65,22 @@ func loop(w *app.Window) error {
 		select {
 		case result := <-permResult:
 			permResult = nil
-			logF("Perm result: %t %s", result.Authorized, result.Err)
+			plog.Printf("Perm result: %t %s", result.Authorized, result.Err)
 
 			files, err := ioutil.ReadDir("/sdcard/DCIM/Camera")
 			if err != nil {
-				logF("read sdcard err: %s", err)
+				plog.Printf("read sdcard err: %s", err)
 			} else {
 				var names []string
 				for _, f := range files {
 					names = append(names, f.Name())
 				}
-				logF("sdcard pictures: %+v", names)
+				plog.Printf("sdcard pictures: %+v", names)
 			}
 			w.Invalidate()
+
+		case logMsg := <-plog.MsgChan():
+			logText.Insert(logMsg)
 
 		case e := <-w.Events():
 			switch e := e.(type) {
@@ -83,6 +90,17 @@ func loop(w *app.Window) error {
 				return e.Err
 			case system.FrameEvent:
 				gtx := layout.NewContext(&ops, e)
+
+				var testUploadClicked bool
+				for uploadBtn.Clicked() {
+					testUploadClicked = true
+				}
+
+				if testUploadClicked {
+					plog.Printf("start test upload")
+					err := upload.Upload()
+					plog.Printf("test upload complete, err=%s", err)
+				}
 
 				if enabledToggle.Changed() {
 					state := "enabled"
@@ -132,7 +150,9 @@ var (
 		SingleLine: true,
 		Submit:     true,
 	}
-	disableBtn   = new(widget.Clickable)
+	disableBtn = new(widget.Clickable)
+	uploadBtn  = new(widget.Clickable)
+
 	settingsList = &layout.List{
 		Axis: layout.Vertical,
 	}
@@ -290,6 +310,7 @@ func drawSettings(gtx layout.Context, th *material.Theme) layout.Dimensions {
 				}),
 			)
 		},
+		material.Button(th, uploadBtn, "Test Upload").Layout,
 	}
 
 	return settingsList.Layout(gtx, len(widgets), func(gtx layout.Context, i int) layout.Dimensions {
