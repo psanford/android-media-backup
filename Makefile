@@ -1,7 +1,7 @@
 PLATFORM_JAR=$(ANDROID_HOME)/platforms/android-30/android.jar
 
 android-media-backup.apk: android-media-backup/jgo.jar $(wildcard *.go) $(wildcard **/*.go)  $(wildcard **/*.java)
-	go run gioui.org/cmd/gogio -target android ./android-media-backup
+	go run gioui.org/cmd/gogio -target android -appid io.sanford.android_media_backup ./android-media-backup
 
 android-media-backup/jgo.jar: $(wildcard **/*.java)
 	mkdir -p classes
