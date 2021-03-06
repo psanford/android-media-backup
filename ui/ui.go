@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"io/ioutil"
 	"log"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
+	"github.com/psanford/android-media-backup-go-experiment/jgo"
 )
 
 type UI struct {
@@ -34,6 +36,7 @@ func (ui *UI) Run() error {
 	} else {
 		logF("DataDir: %s", dataDir)
 	}
+
 	if err := loop(w); err != nil {
 		log.Fatal(err)
 	}
@@ -50,19 +53,40 @@ func logF(format string, args ...interface{}) {
 func loop(w *app.Window) error {
 	th := material.NewTheme(gofont.Collection())
 
+	var permResult <-chan jgo.PermResult
+	var viewEvent app.ViewEvent
+
 	var ops op.Ops
 	for {
 		select {
+		case result := <-permResult:
+			permResult = nil
+			logF("Perm result: %t %s", result.Authorized, result.Err)
+
+			files, err := ioutil.ReadDir("/sdcard/DCIM/Camera")
+			if err != nil {
+				logF("read sdcard err: %s", err)
+			} else {
+				var names []string
+				for _, f := range files {
+					names = append(names, f.Name())
+				}
+				logF("sdcard pictures: %+v", names)
+			}
+			w.Invalidate()
+
 		case e := <-w.Events():
 			switch e := e.(type) {
+			case app.ViewEvent:
+				viewEvent = e
 			case system.DestroyEvent:
 				return e.Err
 			case system.FrameEvent:
 				gtx := layout.NewContext(&ops, e)
 
-				if swtch.Changed() {
+				if enabledToggle.Changed() {
 					state := "enabled"
-					if !swtch.Value {
+					if !enabledToggle.Value {
 						state = "disabled"
 					}
 
@@ -74,6 +98,10 @@ func loop(w *app.Window) error {
 					}
 
 					logText.Insert(fmt.Sprintf("[%s] service state=%s url=%s username=%s password=%s\n", time.Now().Format(time.RFC3339), state, url, username, passwd))
+
+					if state == "enabled" {
+						permResult = jgo.RequestPermission(viewEvent)
+					}
 				}
 
 				layout.Inset{
@@ -109,8 +137,8 @@ var (
 		Axis: layout.Vertical,
 	}
 
-	topLabel = "Android Media Backup"
-	swtch    = new(widget.Bool)
+	topLabel      = "Android Media Backup"
+	enabledToggle = new(widget.Bool)
 
 	tabs = Tabs{
 		tabs: []Tab{
@@ -237,13 +265,13 @@ func drawSettings(gtx layout.Context, th *material.Theme) layout.Dimensions {
 			return layout.Flex{Alignment: layout.Middle}.Layout(gtx,
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 					return layout.Inset{Left: unit.Dp(16)}.Layout(gtx,
-						material.Switch(th, swtch).Layout,
+						material.Switch(th, enabledToggle).Layout,
 					)
 				}),
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 					return layout.Inset{Left: unit.Dp(16)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 						text := "enabled"
-						if !swtch.Value {
+						if !enabledToggle.Value {
 							text = "disabled"
 							gtx = gtx.Disabled()
 						}
@@ -254,7 +282,7 @@ func drawSettings(gtx layout.Context, th *material.Theme) layout.Dimensions {
 				}),
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 					return layout.Inset{Left: unit.Dp(16)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-						if !swtch.Value {
+						if !enabledToggle.Value {
 							return layout.Dimensions{}
 						}
 						return material.Loader(th).Layout(gtx)
