@@ -1,4 +1,5 @@
 *.apk
 *.apk.idsig
-android-media-backup/android-media-backup
-android-media-backup/jgo.jar
+android/build/
+android/.gradle
+android/libs/

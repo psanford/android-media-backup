@@ -400,7 +400,7 @@ func drawSettings(gtx layout.Context, th *material.Theme) layout.Dimensions {
 			if uploadInProgress || !enabledToggle.Value {
 				gtx = gtx.Disabled()
 			}
-			btn := material.Button(th, uploadBtn, "Text Upload")
+			btn := material.Button(th, uploadBtn, "Test Upload")
 			return btn.Layout(gtx)
 		},
 		material.Button(th, resetBtn, "Reset Files").Layout,
