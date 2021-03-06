@@ -1,7 +1,7 @@
 OTHER_JARS=./jars/work-runtime-2.5.0-sources.jar
 AAR=android/libs/android-media-backup.aar
 
-android-media-backup.apk: $(AAR)
+media-backup.apk: $(AAR)
 	(cd android && ./gradlew assembleDebug)
 	mv android/build/outputs/apk/debug/android-debug.apk $@
 

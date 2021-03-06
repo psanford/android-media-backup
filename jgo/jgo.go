@@ -11,7 +11,6 @@ import (
 	"unsafe"
 
 	"gioui.org/app"
-	_ "gioui.org/app/permission/networkstate"
 	_ "gioui.org/app/permission/storage"
 	"git.wow.st/gmp/jni"
 	"github.com/psanford/android-media-backup/upload"

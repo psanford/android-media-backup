@@ -423,6 +423,7 @@ func drawDebug(gtx layout.Context, th *material.Theme) layout.Dimensions {
 		func(gtx C) D {
 			return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				gtx.Constraints.Min.Y = gtx.Px(unit.Dp(500))
+				gtx.Constraints.Max.Y = gtx.Px(unit.Dp(500))
 				return material.Editor(th, logText, "").Layout(gtx)
 			})
 		},
