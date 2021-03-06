@@ -59,6 +59,11 @@ func (ui *UI) loop(w *app.Window) error {
 	if err != nil {
 		plog.Printf("get enabled err: %s", err)
 	}
+	allowMobileUpload, err := ui.db.AllowMobileUpload()
+	if err != nil {
+		plog.Printf("get allowMobile err: %s", err)
+	}
+
 	url, err := ui.db.URL()
 	if err != nil {
 		plog.Printf("get url err: %s", err)
@@ -78,6 +83,7 @@ func (ui *UI) loop(w *app.Window) error {
 		passwordEditor.SetText(password)
 	}
 	enabledToggle.Value = enabledConf
+	wifiOnlyToggle.Value = !allowMobileUpload
 
 	th := material.NewTheme(gofont.Collection())
 
@@ -150,6 +156,11 @@ func (ui *UI) loop(w *app.Window) error {
 					plog.Printf("test upload complete, err=%s", err)
 				}
 
+				if wifiOnlyToggle.Changed() {
+					allowMobile := !wifiOnlyToggle.Value
+					ui.db.SetAllowMobileUpload(allowMobile)
+				}
+
 				if enabledToggle.Changed() {
 					enabled := true
 					state := "enabled"
@@ -202,16 +213,16 @@ var (
 		SingleLine: true,
 		Submit:     true,
 	}
-	disableBtn = new(widget.Clickable)
-	uploadBtn  = new(widget.Clickable)
-	resetBtn   = new(widget.Clickable)
+	uploadBtn = new(widget.Clickable)
+	resetBtn  = new(widget.Clickable)
 
 	settingsList = &layout.List{
 		Axis: layout.Vertical,
 	}
 
-	topLabel      = "Android Media Backup"
-	enabledToggle = new(widget.Bool)
+	topLabel       = "Android Media Backup"
+	enabledToggle  = new(widget.Bool)
+	wifiOnlyToggle = new(widget.Bool)
 
 	tabs = Tabs{
 		tabs: []Tab{
@@ -336,25 +347,31 @@ func drawSettings(gtx layout.Context, th *material.Theme) layout.Dimensions {
 
 		func(gtx layout.Context) layout.Dimensions {
 			return layout.Flex{Alignment: layout.Middle}.Layout(gtx,
-				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					return layout.Inset{Left: unit.Dp(16)}.Layout(gtx,
-						material.Switch(th, enabledToggle).Layout,
-					)
+				layout.Flexed(0.8, func(gtx C) D {
+					return material.H6(th, "Enable Automatic Backups").Layout(gtx)
 				}),
-				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					return layout.Inset{Left: unit.Dp(16)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-						text := "enabled"
-						if !enabledToggle.Value {
-							text = "disabled"
-							gtx = gtx.Disabled()
-						}
-
-						btn := material.Button(th, disableBtn, text)
-						return btn.Layout(gtx)
-					})
+				layout.Flexed(0.2, func(gtx layout.Context) layout.Dimensions {
+					return layout.Inset{Left: unit.Dp(16)}.Layout(gtx,
+						material.CheckBox(th, enabledToggle, "").Layout,
+					)
 				}),
 			)
 		},
+
+		func(gtx layout.Context) layout.Dimensions {
+			return layout.Flex{Alignment: layout.Middle}.Layout(gtx,
+				layout.Flexed(0.8, func(gtx C) D {
+					return material.H6(th, "On Wifi Only").Layout(gtx)
+				}),
+
+				layout.Flexed(0.2, func(gtx layout.Context) layout.Dimensions {
+					return layout.Inset{Left: unit.Dp(16)}.Layout(gtx,
+						material.CheckBox(th, wifiOnlyToggle, "").Layout,
+					)
+				}),
+			)
+		},
+
 		material.Button(th, uploadBtn, "Test Upload").Layout,
 		material.Button(th, resetBtn, "Reset Files").Layout,
 	}

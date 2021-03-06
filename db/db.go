@@ -177,10 +177,11 @@ func (db *DB) ResetFiles() error {
 }
 
 var (
-	confKeyEnabled  = "enabled"
-	confKeyURL      = "url"
-	confKeyUsername = "username"
-	confKeyPassword = "password"
+	confKeyEnabled     = "enabled"
+	confKeyURL         = "url"
+	confKeyUsername    = "username"
+	confKeyPassword    = "password"
+	confKeyAllowMobile = "allow_mobile_upload"
 )
 
 func (db *DB) Enabled() (bool, error) {
@@ -221,6 +222,16 @@ func (db *DB) Password() (string, error) {
 
 func (db *DB) SetPassword(password string) error {
 	return db.confSet(confKeyPassword, password)
+}
+
+func (db *DB) AllowMobileUpload() (bool, error) {
+	var allowMobile bool
+	err := db.confGet(confKeyAllowMobile, &allowMobile)
+	return allowMobile, err
+}
+
+func (db *DB) SetAllowMobileUpload(allowMobile bool) error {
+	return db.confSet(confKeyAllowMobile, allowMobile)
 }
 
 func (db *DB) confGet(key string, val interface{}) error {
