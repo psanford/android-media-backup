@@ -52,10 +52,11 @@ func (s UploadState) String() string {
 }
 
 const (
-	UploadPending    UploadState = 1
-	UploadInProgress UploadState = 2
-	UploadSuccess    UploadState = 3
-	UploadFailed     UploadState = 4
+	UploadPending     UploadState = 1
+	UploadInProgress  UploadState = 2
+	UploadSuccess     UploadState = 3
+	UploadFailed      UploadState = 4
+	UploadFileDeleted UploadState = 5
 )
 
 func initDB(db *sql.DB) error {
@@ -152,6 +153,27 @@ func (db *DB) CreatePending(name, path string, modTime time.Time, size int64) (*
 	}
 
 	return &file, nil
+}
+
+func (db *DB) StartUpload(name string) error {
+	ts := unixtime.ToUnix(time.Now(), time.Millisecond)
+	_, err := db.DB.Exec("update file set state = ?, upload_started_epoch_ms = ? where name = ?", UploadInProgress, ts, name)
+	return err
+}
+
+func (db *DB) EndUpload(name string, success bool) error {
+	ts := unixtime.ToUnix(time.Now(), time.Millisecond)
+	state := UploadFailed
+	if success {
+		state = UploadSuccess
+	}
+	_, err := db.DB.Exec("update file set state = ?, upload_end_epoch_ms = ? where name = ?", state, ts, name)
+	return err
+}
+
+func (db *DB) ResetFiles() error {
+	_, err := db.DB.Exec("delete from file")
+	return err
 }
 
 var (

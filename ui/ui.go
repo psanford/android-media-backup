@@ -120,6 +120,15 @@ func (ui *UI) loop(w *app.Window) error {
 					testUploadClicked = true
 				}
 
+				var resetClicked bool
+				for resetBtn.Clicked() {
+					resetClicked = true
+				}
+
+				if resetClicked {
+					ui.db.ResetFiles()
+				}
+
 				if urlEditor.Text() != url {
 					url = urlEditor.Text()
 					ui.db.SetURL(url)
@@ -195,6 +204,7 @@ var (
 	}
 	disableBtn = new(widget.Clickable)
 	uploadBtn  = new(widget.Clickable)
+	resetBtn   = new(widget.Clickable)
 
 	settingsList = &layout.List{
 		Axis: layout.Vertical,
@@ -346,6 +356,7 @@ func drawSettings(gtx layout.Context, th *material.Theme) layout.Dimensions {
 			)
 		},
 		material.Button(th, uploadBtn, "Test Upload").Layout,
+		material.Button(th, resetBtn, "Reset Files").Layout,
 	}
 
 	return settingsList.Layout(gtx, len(widgets), func(gtx layout.Context, i int) layout.Dimensions {
@@ -354,11 +365,15 @@ func drawSettings(gtx layout.Context, th *material.Theme) layout.Dimensions {
 }
 
 func drawDebug(gtx layout.Context, th *material.Theme) layout.Dimensions {
+	border := widget.Border{Color: color.NRGBA{A: 0xff}, CornerRadius: unit.Dp(8), Width: unit.Px(2)}
+
 	widgets := []layout.Widget{
 		material.H5(th, "Event Log").Layout,
 		func(gtx C) D {
-			gtx.Constraints.Max.Y = gtx.Px(unit.Dp(200))
-			return material.Editor(th, logText, "").Layout(gtx)
+			return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+				gtx.Constraints.Min.Y = gtx.Px(unit.Dp(500))
+				return material.Editor(th, logText, "").Layout(gtx)
+			})
 		},
 	}
 
