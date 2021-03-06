@@ -47,14 +47,38 @@ func (ui *UI) Run() error {
 		plog.Printf("DataDir: %s", dataDir)
 	}
 
-	if err := loop(w); err != nil {
+	if err := ui.loop(w); err != nil {
 		log.Fatal(err)
 	}
 
 	return nil
 }
 
-func loop(w *app.Window) error {
+func (ui *UI) loop(w *app.Window) error {
+	enabledConf, err := ui.db.Enabled()
+	if err != nil {
+		plog.Printf("get enabled err: %s", err)
+	}
+	url, err := ui.db.URL()
+	if err != nil {
+		plog.Printf("get url err: %s", err)
+	}
+	username, err := ui.db.Username()
+	if err != nil {
+		plog.Printf("get username err: %s", err)
+	}
+	password, err := ui.db.Password()
+	if err != nil {
+		plog.Printf("get password err: %s", err)
+	}
+
+	urlEditor.SetText(url)
+	usernameEditor.SetText(username)
+	if password != "" {
+		passwordEditor.SetText(password)
+	}
+	enabledToggle.Value = enabledConf
+
 	th := material.NewTheme(gofont.Collection())
 
 	var permResult <-chan jgo.PermResult
@@ -96,6 +120,21 @@ func loop(w *app.Window) error {
 					testUploadClicked = true
 				}
 
+				if urlEditor.Text() != url {
+					url = urlEditor.Text()
+					ui.db.SetURL(url)
+				}
+
+				if usernameEditor.Text() != username {
+					username = usernameEditor.Text()
+					ui.db.SetUsername(username)
+				}
+
+				if passwordEditor.Text() != password {
+					password = passwordEditor.Text()
+					ui.db.SetPassword(password)
+				}
+
 				if testUploadClicked {
 					plog.Printf("start test upload")
 					err := upload.Upload()
@@ -103,10 +142,14 @@ func loop(w *app.Window) error {
 				}
 
 				if enabledToggle.Changed() {
+					enabled := true
 					state := "enabled"
 					if !enabledToggle.Value {
 						state = "disabled"
+						enabled = false
 					}
+
+					ui.db.SetEnabled(enabled)
 
 					url := urlEditor.Text()
 					username := usernameEditor.Text()
@@ -117,7 +160,7 @@ func loop(w *app.Window) error {
 
 					logText.Insert(fmt.Sprintf("[%s] service state=%s url=%s username=%s password=%s\n", time.Now().Format(time.RFC3339), state, url, username, passwd))
 
-					if state == "enabled" {
+					if enabled {
 						permResult = jgo.RequestPermission(viewEvent)
 					}
 				}
@@ -298,14 +341,6 @@ func drawSettings(gtx layout.Context, th *material.Theme) layout.Dimensions {
 
 						btn := material.Button(th, disableBtn, text)
 						return btn.Layout(gtx)
-					})
-				}),
-				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					return layout.Inset{Left: unit.Dp(16)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-						if !enabledToggle.Value {
-							return layout.Dimensions{}
-						}
-						return material.Loader(th).Layout(gtx)
 					})
 				}),
 			)

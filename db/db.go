@@ -61,7 +61,7 @@ const (
 func initDB(db *sql.DB) error {
 	var createConfig = `CREATE TABLE IF NOT EXISTS config (
 key text PRIMARY KEY,
-val text
+val
 )`
 
 	_, err := db.Exec(createConfig)
@@ -154,6 +154,59 @@ func (db *DB) CreatePending(name, path string, modTime time.Time, size int64) (*
 	return &file, nil
 }
 
-func (db *DB) GetConf() {
+var (
+	confKeyEnabled  = "enabled"
+	confKeyURL      = "url"
+	confKeyUsername = "username"
+	confKeyPassword = "password"
+)
 
+func (db *DB) Enabled() (bool, error) {
+	var enabled bool
+	err := db.confGet(confKeyEnabled, &enabled)
+	return enabled, err
+}
+
+func (db *DB) SetEnabled(val bool) error {
+	return db.confSet(confKeyEnabled, val)
+}
+
+func (db *DB) URL() (string, error) {
+	var url string
+	err := db.confGet(confKeyURL, &url)
+	return url, err
+}
+
+func (db *DB) SetURL(url string) error {
+	return db.confSet(confKeyURL, url)
+}
+
+func (db *DB) Username() (string, error) {
+	var username string
+	err := db.confGet(confKeyUsername, &username)
+	return username, err
+}
+
+func (db *DB) SetUsername(username string) error {
+	return db.confSet(confKeyUsername, username)
+}
+
+func (db *DB) Password() (string, error) {
+	var password string
+	err := db.confGet(confKeyPassword, &password)
+	return password, err
+}
+
+func (db *DB) SetPassword(password string) error {
+	return db.confSet(confKeyPassword, password)
+}
+
+func (db *DB) confGet(key string, val interface{}) error {
+	row := db.DB.QueryRow("select val from config where key = ?", key)
+	return row.Scan(val)
+}
+
+func (db *DB) confSet(key string, val interface{}) error {
+	_, err := db.DB.Exec("insert or replace into config (key, val) values (?, ?)", key, val)
+	return err
 }
