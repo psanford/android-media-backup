@@ -10,5 +10,3 @@ require (
 	github.com/retailnext/unixtime v0.0.0-20171004230528-01070448a2fe
 	golang.org/x/exp v0.0.0-20210220032938-85be41e4509f // indirect
 )
-
-replace gioui.org => github.com/psanford/gio v0.0.0-20210306183600-acea54bfd6e0

@@ -48,6 +48,10 @@ func (ui *UI) Run() error {
 		plog.Printf("DataDir: %s", dataDir)
 	}
 
+	if err := jgo.StartBGWorker(); err != nil {
+		log.Fatal(err)
+	}
+
 	if err := ui.loop(w); err != nil {
 		log.Fatal(err)
 	}

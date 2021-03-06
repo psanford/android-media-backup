@@ -6,7 +6,6 @@ package jgo
 import "C"
 
 import (
-	"fmt"
 	"log"
 	"sync"
 	"unsafe"
@@ -15,6 +14,7 @@ import (
 	_ "gioui.org/app/permission/networkstate"
 	_ "gioui.org/app/permission/storage"
 	"git.wow.st/gmp/jni"
+	"github.com/psanford/android-media-backup/upload"
 )
 
 type PermResult struct {
@@ -35,7 +35,6 @@ func RequestPermission(viewEvt app.ViewEvent) <-chan PermResult {
 
 	go func() {
 		jvm := jni.JVMFor(app.JavaVM())
-		log.Printf("AppCtx: %d", app.AppContext())
 		err := jni.Do(jvm, func(env jni.Env) error {
 
 			var uptr = app.AppContext()
@@ -67,51 +66,24 @@ func RequestPermission(viewEvt app.ViewEvent) <-chan PermResult {
 	return pendingResult
 }
 
-type ConnState int
-
-func (cs ConnState) String() string {
-	switch cs {
-	case ConnStateUnknown:
-		return "ConnStateUnknown"
-	case NoNetwork:
-		return "NoNetwork"
-	case NotWifi:
-		return "NotWifi"
-	case Wifi:
-		return "Wifi"
-	default:
-		return fmt.Sprintf("ConnStateUnkown<%d>", cs)
-	}
-}
-
-const (
-	ConnStateUnknown ConnState = -2
-	NoNetwork        ConnState = -1
-	NotWifi          ConnState = 0
-	Wifi             ConnState = 1
-)
-
-func ConnectionState() (ConnState, error) {
+func StartBGWorker() error {
 	jvm := jni.JVMFor(app.JavaVM())
-	log.Printf("AppCtx: %d", app.AppContext())
-	var state = -2
+	log.Printf("StartBGWorker")
 	err := jni.Do(jvm, func(env jni.Env) error {
 
 		var uptr = app.AppContext()
 		appCtx := *(*jni.Object)(unsafe.Pointer(&uptr))
 		loader := jni.ClassLoaderFor(env, appCtx)
-		cls, err := jni.LoadClass(env, loader, "io.sanford.jgo.Jni")
+		cls, err := jni.LoadClass(env, loader, "io.sanford.jgo.BackgroundWorker")
 		if err != nil {
-			log.Printf("Load io.sanford.jgo.Jni error: %s", err)
+			log.Printf("Load io.sanford.jgo.BackgroundWorker error: %s", err)
 		}
 
-		mid := jni.GetStaticMethodID(env, cls, "connectionState", "(Landroid/content/Context;)I")
-		state, err = jni.CallStaticIntMethod(env, cls, mid, jni.Value(appCtx))
-
-		return err
+		mid := jni.GetStaticMethodID(env, cls, "launchBackgroundWorker", "(Landroid/content/Context;)V")
+		return jni.CallStaticVoidMethod(env, cls, mid, jni.Value(appCtx))
 	})
 
-	return ConnState(state), err
+	return err
 }
 
 //export Java_io_sanford_jgo_Jni_permissionResult
@@ -133,4 +105,15 @@ func Java_io_sanford_jgo_Jni_permissionResult(env *C.JNIEnv, cls C.jclass, jok C
 	}
 	pendingResults = pendingResults[:0]
 	pendingResultMux.Unlock()
+}
+
+//export Java_io_sanford_jgo_BackgroundWorker_runBackgroundJob
+func Java_io_sanford_jgo_BackgroundWorker_runBackgroundJob() {
+	log.Printf("begin upload work")
+	err := upload.Upload()
+	if err != nil {
+		log.Printf("upload work err: %s", err)
+	} else {
+		log.Printf("upload work complete")
+	}
 }

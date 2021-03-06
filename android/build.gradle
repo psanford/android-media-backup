@@ -37,5 +37,6 @@ android {
 
 dependencies {
     implementation "androidx.core:core:1.2.0"
+    implementation 'androidx.work:work-runtime:2.0.1-rc01'
     implementation ':android-media-backup@aar'
 }
