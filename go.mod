@@ -9,5 +9,6 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.6
 	github.com/retailnext/unixtime v0.0.0-20171004230528-01070448a2fe
 	golang.org/x/exp v0.0.0-20210220032938-85be41e4509f // indirect
-	golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c // indirect
 )
+
+replace gioui.org => github.com/psanford/gio v0.0.0-20210306183600-acea54bfd6e0

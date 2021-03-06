@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"io/ioutil"
 	"log"
+	"sync"
 	"time"
 
 	"gioui.org/app"
@@ -126,13 +127,24 @@ func (ui *UI) loop(w *app.Window) error {
 					testUploadClicked = true
 				}
 
-				var resetClicked bool
+				var resetFilesOnce sync.Once
 				for resetBtn.Clicked() {
-					resetClicked = true
+					resetFilesOnce.Do(func() {
+						ui.db.ResetFiles()
+					})
 				}
 
-				if resetClicked {
-					ui.db.ResetFiles()
+				var logWifiOnce sync.Once
+				for wifiStateBtn.Clicked() {
+					logWifiOnce.Do(func() {
+						plog.Printf("attempt get wifi state")
+						state, err := jgo.ConnectionState(viewEvent)
+						if err != nil {
+							plog.Printf("get wifi state err: %s", err)
+						} else {
+							plog.Printf("wifi state: %s", state)
+						}
+					})
 				}
 
 				if urlEditor.Text() != url {
@@ -213,8 +225,9 @@ var (
 		SingleLine: true,
 		Submit:     true,
 	}
-	uploadBtn = new(widget.Clickable)
-	resetBtn  = new(widget.Clickable)
+	uploadBtn    = new(widget.Clickable)
+	resetBtn     = new(widget.Clickable)
+	wifiStateBtn = new(widget.Clickable)
 
 	settingsList = &layout.List{
 		Axis: layout.Vertical,
@@ -230,7 +243,7 @@ var (
 				Title: "Settings",
 			},
 			{
-				Title: "Log",
+				Title: "Files",
 			},
 			{
 				Title: "Debug",
@@ -374,6 +387,7 @@ func drawSettings(gtx layout.Context, th *material.Theme) layout.Dimensions {
 
 		material.Button(th, uploadBtn, "Test Upload").Layout,
 		material.Button(th, resetBtn, "Reset Files").Layout,
+		material.Button(th, wifiStateBtn, "Log wifi state").Layout,
 	}
 
 	return settingsList.Layout(gtx, len(widgets), func(gtx layout.Context, i int) layout.Dimensions {

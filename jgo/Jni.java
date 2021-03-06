@@ -1,15 +1,17 @@
 package io.sanford.jgo;
 
-import java.lang.String;
-import android.content.pm.PackageManager;
 import android.Manifest;
-import android.os.Handler;
 import android.app.Activity;
 import android.app.Fragment;
 import android.app.FragmentTransaction;
+import android.content.Context;
+import android.content.pm.PackageManager;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.os.Handler;
 import android.util.Log;
 import android.view.View;
-import android.content.Context;
+import java.lang.String;
 
 
 public class Jni extends Fragment {
@@ -69,6 +71,22 @@ public class Jni extends Fragment {
 
       permissionResult(granted);
     }
+  }
+
+  static int connectionState(Context ctx) {
+    ConnectivityManager cs = (ConnectivityManager) ctx.getSystemService(Context.CONNECTIVITY_SERVICE);
+
+		NetworkInfo info = cs.getActiveNetworkInfo();
+		if (info == null || !info.isConnected()) {
+			Log.d("gio", "No network connection");
+			return -1;
+		}
+
+    if (ConnectivityManager.TYPE_WIFI == info.getType()) {
+      return 1;
+    }
+
+    return 0;
   }
 
   static private native void permissionResult(boolean allowed);
