@@ -19,10 +19,10 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
-	"github.com/psanford/android-media-backup-go-experiment/db"
-	"github.com/psanford/android-media-backup-go-experiment/jgo"
-	"github.com/psanford/android-media-backup-go-experiment/ui/plog"
-	"github.com/psanford/android-media-backup-go-experiment/upload"
+	"github.com/psanford/android-media-backup/db"
+	"github.com/psanford/android-media-backup/jgo"
+	"github.com/psanford/android-media-backup/ui/plog"
+	"github.com/psanford/android-media-backup/upload"
 )
 
 type UI struct {

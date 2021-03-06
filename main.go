@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"gioui.org/app"
-	"github.com/psanford/android-media-backup-go-experiment/ui"
+	"github.com/psanford/android-media-backup/ui"
 )
 
 func main() {

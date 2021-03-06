@@ -1,4 +1,4 @@
-module github.com/psanford/android-media-backup-go-experiment
+module github.com/psanford/android-media-backup
 
 go 1.16
 

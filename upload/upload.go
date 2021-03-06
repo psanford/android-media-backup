@@ -14,9 +14,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/psanford/android-media-backup-go-experiment/db"
-	"github.com/psanford/android-media-backup-go-experiment/jgo"
-	"github.com/psanford/android-media-backup-go-experiment/ui/plog"
+	"github.com/psanford/android-media-backup/db"
+	"github.com/psanford/android-media-backup/jgo"
+	"github.com/psanford/android-media-backup/ui/plog"
 )
 
 func Upload() error {
