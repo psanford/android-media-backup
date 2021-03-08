@@ -180,6 +180,7 @@ var (
 	confKeyUsername    = "username"
 	confKeyPassword    = "password"
 	confKeyAllowMobile = "allow_mobile_upload"
+	confKeyLastCheck   = "last_check_epoch_ms"
 )
 
 func (db *DB) Enabled() (bool, error) {
@@ -232,6 +233,16 @@ func (db *DB) SetAllowMobileUpload(allowMobile bool) error {
 	return db.confSet(confKeyAllowMobile, allowMobile)
 }
 
+func (db *DB) SetLastCheckTime(ts time.Time) error {
+	return db.confSet(confKeyLastCheck, unixtime.ToUnix(ts, time.Millisecond))
+}
+
+func (db *DB) LastCheckTime() (time.Time, error) {
+	var lastCheckMS int64
+	err := db.confGet(confKeyLastCheck, &lastCheckMS)
+	return unixtime.ToTime(lastCheckMS, time.Millisecond), err
+}
+
 func (db *DB) confGet(key string, val interface{}) error {
 	row := db.DB.QueryRow("select val from config where key = ?", key)
 	return row.Scan(val)
@@ -240,4 +251,25 @@ func (db *DB) confGet(key string, val interface{}) error {
 func (db *DB) confSet(key string, val interface{}) error {
 	_, err := db.DB.Exec("insert or replace into config (key, val) values (?, ?)", key, val)
 	return err
+}
+
+func (db *DB) LastFileUpload() (time.Time, error) {
+	row := db.DB.QueryRow("select upload_end_epoch_ms from file where state = ? order by upload_end_epoch_ms desc limit 1", UploadSuccess)
+	var epochMS int64
+	err := row.Scan(&epochMS)
+	return unixtime.ToTime(epochMS, time.Millisecond), err
+}
+
+func (db *DB) PendingUploads() (int, error) {
+	row := db.DB.QueryRow("select count(*) from file where state = ?", UploadPending)
+	var pendingCount int
+	err := row.Scan(&pendingCount)
+	return pendingCount, err
+}
+
+func (db *DB) UploadsSince(ts time.Time, state UploadState) (int, error) {
+	row := db.DB.QueryRow("select count(*) from file where state = ? and upload_started_epoch_ms > ?", state, unixtime.ToUnix(ts, time.Millisecond))
+	var count int
+	err := row.Scan(&count)
+	return count, err
 }

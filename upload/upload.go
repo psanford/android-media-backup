@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -19,14 +20,9 @@ import (
 	"github.com/psanford/android-media-backup/ui/plog"
 )
 
-func Upload() error {
-	p := "/sdcard/DCIM/Camera"
-	files, err := ioutil.ReadDir(p)
-	if err != nil {
-		plog.Printf("read sdcard err: %s", err)
-		return err
-	}
+var mediaPath = "/sdcard/DCIM/Camera"
 
+func Upload() error {
 	store, err := db.Open()
 	if err != nil {
 		plog.Printf("open db err: %s", err)
@@ -39,39 +35,14 @@ func Upload() error {
 		return errors.New("service disabled")
 	}
 
-	dbFiles, err := store.GetFiles()
+	defer func() {
+		now := time.Now()
+		store.SetLastCheckTime(now)
+	}()
+
+	files, dbFilesMap, err := ScanFiles(store)
 	if err != nil {
-		plog.Printf("get files err: %s", err)
 		return err
-	}
-
-	dbFilesMap := make(map[string]*db.File)
-	for _, dbFile := range dbFiles {
-		dbFile := dbFile
-		dbFilesMap[dbFile.Name] = &dbFile
-	}
-
-	for _, f := range files {
-		filename := f.Name()
-		pp := filepath.Join(p, filename)
-		modTime := f.ModTime()
-		size := f.Size()
-
-		plog.Printf("bgjob file=%s time=%s size=%d", filename, modTime, size)
-
-		dbFile := dbFilesMap[filename]
-
-		if dbFile == nil {
-			plog.Printf("bgjob %s not in db, setting to pending", filename)
-			dbFile, err = store.CreatePending(filename, pp, modTime, size)
-			if err != nil {
-				plog.Printf("bgjob %s create pending failed: %s", filename, err)
-				continue
-			}
-			dbFilesMap[filename] = dbFile
-		} else {
-			plog.Printf("bgjob %s in db, state is %s", filename, dbFile.State)
-		}
 	}
 
 	for _, f := range files {
@@ -94,7 +65,7 @@ func Upload() error {
 		}
 
 		filename := f.Name()
-		fpath := filepath.Join(p, filename)
+		fpath := filepath.Join(mediaPath, filename)
 		modTime := f.ModTime()
 		size := f.Size()
 
@@ -248,6 +219,50 @@ func uploadFile(r io.Reader, size int64, dest *UploadDestination) error {
 	}
 
 	return nil
+}
+
+func ScanFiles(store *db.DB) ([]fs.FileInfo, map[string]*db.File, error) {
+	files, err := ioutil.ReadDir(mediaPath)
+	if err != nil {
+		plog.Printf("read sdcard err: %s", err)
+		return nil, nil, err
+	}
+
+	dbFiles, err := store.GetFiles()
+	if err != nil {
+		plog.Printf("get files err: %s", err)
+		return nil, nil, err
+	}
+
+	dbFilesMap := make(map[string]*db.File)
+	for _, dbFile := range dbFiles {
+		dbFile := dbFile
+		dbFilesMap[dbFile.Name] = &dbFile
+	}
+
+	for _, f := range files {
+		filename := f.Name()
+		pp := filepath.Join(mediaPath, filename)
+		modTime := f.ModTime()
+		size := f.Size()
+
+		plog.Printf("bgjob file=%s time=%s size=%d", filename, modTime, size)
+
+		dbFile := dbFilesMap[filename]
+
+		if dbFile == nil {
+			plog.Printf("bgjob %s not in db, setting to pending", filename)
+			dbFile, err = store.CreatePending(filename, pp, modTime, size)
+			if err != nil {
+				plog.Printf("bgjob %s create pending failed: %s", filename, err)
+				continue
+			}
+			dbFilesMap[filename] = dbFile
+		} else {
+			plog.Printf("bgjob %s in db, state is %s", filename, dbFile.State)
+		}
+	}
+	return files, dbFilesMap, nil
 }
 
 type FileMetadata struct {

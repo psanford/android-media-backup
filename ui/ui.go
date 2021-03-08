@@ -6,7 +6,9 @@ import (
 	"image/color"
 	"io/ioutil"
 	"log"
+	"strconv"
 	"sync"
+	"time"
 
 	"gioui.org/app"
 	"gioui.org/font/gofont"
@@ -18,6 +20,7 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
+	"github.com/dustin/go-humanize"
 	"github.com/psanford/android-media-backup/db"
 	"github.com/psanford/android-media-backup/jgo"
 	"github.com/psanford/android-media-backup/ui/plog"
@@ -89,13 +92,13 @@ func (ui *UI) loop(w *app.Window) error {
 	enabledToggle.Value = enabledConf
 	wifiOnlyToggle.Value = !allowMobileUpload
 
-	th := material.NewTheme(gofont.Collection())
-
 	var (
 		permResult <-chan jgo.PermResult
 		viewEvent  app.ViewEvent
 
+		th           = material.NewTheme(gofont.Collection())
 		manualUpload = make(chan chan struct{})
+		minuteTicker = time.NewTicker(1 * time.Minute)
 	)
 
 	go func() {
@@ -109,9 +112,20 @@ func (ui *UI) loop(w *app.Window) error {
 		}
 	}()
 
+	recheckStats := func() {
+		lastSyncTime, _ = ui.db.LastCheckTime()
+		lastFileUpload, _ = ui.db.LastFileUpload()
+		pendingUploads, _ = ui.db.PendingUploads()
+		recentUploads, _ = ui.db.UploadsSince(time.Now().Add(-30*24*time.Hour), db.UploadSuccess)
+		recentFailedUploads, _ = ui.db.UploadsSince(time.Now().Add(-30*24*time.Hour), db.UploadFailed)
+	}
+	recheckStats()
+
 	var ops op.Ops
 	for {
 		select {
+		case <-minuteTicker.C:
+			recheckStats()
 		case result := <-permResult:
 			permResult = nil
 			plog.Printf("Perm result: %t %s", result.Authorized, result.Err)
@@ -137,6 +151,12 @@ func (ui *UI) loop(w *app.Window) error {
 				viewEvent = e
 			case system.DestroyEvent:
 				return e.Err
+			case system.StageEvent:
+				if e.Stage == system.StageRunning {
+					plog.Printf("recheck files")
+					upload.ScanFiles(ui.db)
+					recheckStats()
+				}
 			case system.FrameEvent:
 				gtx := layout.NewContext(&ops, e)
 
@@ -227,6 +247,12 @@ var (
 	uploadInProgress = false
 	uploadBtn        = new(widget.Clickable)
 	resetBtn         = new(widget.Clickable)
+
+	lastSyncTime        time.Time
+	lastFileUpload      time.Time
+	pendingUploads      int
+	recentUploads       int
+	recentFailedUploads int
 
 	settingsList = &layout.List{
 		Axis: layout.Vertical,
@@ -380,6 +406,74 @@ func drawSettings(gtx layout.Context, th *material.Theme) layout.Dimensions {
 					return layout.Inset{Left: unit.Dp(16)}.Layout(gtx,
 						material.CheckBox(th, wifiOnlyToggle, "").Layout,
 					)
+				}),
+			)
+		},
+
+		func(gtx layout.Context) layout.Dimensions {
+			return layout.Flex{Alignment: layout.Middle}.Layout(gtx,
+				layout.Flexed(0.6, func(gtx C) D {
+					return material.H6(th, "Last Sync Check:").Layout(gtx)
+				}),
+
+				layout.Flexed(0.4, func(gtx layout.Context) layout.Dimensions {
+					str := "never"
+					if !lastSyncTime.IsZero() {
+						str = humanize.Time(lastSyncTime)
+					}
+					return material.H6(th, str).Layout(gtx)
+				}),
+			)
+		},
+
+		func(gtx layout.Context) layout.Dimensions {
+			return layout.Flex{Alignment: layout.Middle}.Layout(gtx,
+				layout.Flexed(0.6, func(gtx C) D {
+					return material.H6(th, "Last Upload:").Layout(gtx)
+				}),
+
+				layout.Flexed(0.4, func(gtx layout.Context) layout.Dimensions {
+					str := "never"
+					if !lastFileUpload.IsZero() {
+						str = humanize.Time(lastFileUpload)
+					}
+					return material.H6(th, str).Layout(gtx)
+				}),
+			)
+		},
+
+		func(gtx layout.Context) layout.Dimensions {
+			return layout.Flex{Alignment: layout.Middle}.Layout(gtx,
+				layout.Flexed(0.8, func(gtx C) D {
+					return material.H6(th, "Pending Uploads:").Layout(gtx)
+				}),
+
+				layout.Flexed(0.2, func(gtx layout.Context) layout.Dimensions {
+					return material.H6(th, strconv.Itoa(pendingUploads)).Layout(gtx)
+				}),
+			)
+		},
+
+		func(gtx layout.Context) layout.Dimensions {
+			return layout.Flex{Alignment: layout.Middle}.Layout(gtx,
+				layout.Flexed(0.8, func(gtx C) D {
+					return material.H6(th, "Uploads in the last month:").Layout(gtx)
+				}),
+
+				layout.Flexed(0.2, func(gtx layout.Context) layout.Dimensions {
+					return material.H6(th, strconv.Itoa(recentUploads)).Layout(gtx)
+				}),
+			)
+		},
+
+		func(gtx layout.Context) layout.Dimensions {
+			return layout.Flex{Alignment: layout.Middle}.Layout(gtx,
+				layout.Flexed(0.8, func(gtx C) D {
+					return material.H6(th, "Failures in the last month:").Layout(gtx)
+				}),
+
+				layout.Flexed(0.2, func(gtx layout.Context) layout.Dimensions {
+					return material.H6(th, strconv.Itoa(recentFailedUploads)).Layout(gtx)
 				}),
 			)
 		},
