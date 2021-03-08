@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"log"
 	"sync"
-	"time"
 
 	"gioui.org/app"
 	"gioui.org/font/gofont"
@@ -189,23 +188,8 @@ func (ui *UI) loop(w *app.Window) error {
 				}
 
 				if enabledToggle.Changed() {
-					enabled := true
-					state := "enabled"
-					if !enabledToggle.Value {
-						state = "disabled"
-						enabled = false
-					}
-
+					enabled := enabledToggle.Value
 					ui.db.SetEnabled(enabled)
-
-					url := urlEditor.Text()
-					username := usernameEditor.Text()
-					passwd := "<unset>"
-					if passwordEditor.Text() != "" {
-						passwd = "<redacted>"
-					}
-
-					logText.Insert(fmt.Sprintf("[%s] service state=%s url=%s username=%s password=%s\n", time.Now().Format(time.RFC3339), state, url, username, passwd))
 
 					if enabled {
 						permResult = jgo.RequestPermission(viewEvent)
