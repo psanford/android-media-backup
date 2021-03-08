@@ -12,6 +12,8 @@ import androidx.work.WorkerParameters;
 import androidx.work.PeriodicWorkRequest;
 
 public class BackgroundWorker extends Worker {
+   private static final String WORKER_TAG = BackgroundWorker.class.getSimpleName();
+
   public BackgroundWorker(Context context, WorkerParameters params) {
     super(context, params);
     Log.d("sanford android-media-backup", "BackgroundWorker()");
@@ -37,8 +39,11 @@ public class BackgroundWorker extends Worker {
       // We might also want to consider an option for
       // .setRequiresCharging(true)
 
+    // cancel any existing workers
+    WorkManager.getInstance().cancelAllWork();
 
     PeriodicWorkRequest workRequest = new PeriodicWorkRequest.Builder(BackgroundWorker.class, 15, TimeUnit.MINUTES)
+      .addTag(BackgroundWorker.WORKER_TAG)
       .setConstraints(constraints)
       .build();
 
