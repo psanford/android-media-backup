@@ -55,8 +55,9 @@ const (
 	UploadPending     UploadState = 1
 	UploadInProgress  UploadState = 2
 	UploadSuccess     UploadState = 3
-	UploadFailed      UploadState = 4
-	UploadFileDeleted UploadState = 5
+	UploadSkipped     UploadState = 4
+	UploadFailed      UploadState = 5
+	UploadFileDeleted UploadState = 6
 )
 
 func initDB(db *sql.DB) error {
@@ -161,12 +162,9 @@ func (db *DB) StartUpload(name string) error {
 	return err
 }
 
-func (db *DB) EndUpload(name string, success bool) error {
+func (db *DB) EndUpload(name string, state UploadState) error {
 	ts := unixtime.ToUnix(time.Now(), time.Millisecond)
-	state := UploadFailed
-	if success {
-		state = UploadSuccess
-	}
+
 	_, err := db.DB.Exec("update file set state = ?, upload_end_epoch_ms = ? where name = ?", state, ts, name)
 	return err
 }

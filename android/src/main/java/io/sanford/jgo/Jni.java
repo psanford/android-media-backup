@@ -53,7 +53,7 @@ public class Jni extends Fragment {
   }
 
   @Override
-  public void onRequestPermissionsResult (int requestCode, String[] permissions, int[] grantResults) {
+  public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
     Log.d("gio", "Jni: onRequestPermissionsResult");
     if (requestCode == PERMISSION_REQUEST) {
       boolean granted = true;

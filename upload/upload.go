@@ -112,7 +112,7 @@ func Upload() error {
 			f, err := os.Open(fpath)
 			if err != nil {
 				plog.Printf("open file err for=%s err=%s", dbFile.Name, err)
-				store.EndUpload(dbFile.Name, false)
+				store.EndUpload(dbFile.Name, db.UploadFailed)
 				continue
 			}
 
@@ -120,7 +120,7 @@ func Upload() error {
 			_, err = io.Copy(summer, f)
 			if err != nil {
 				plog.Printf("read file err for=%s err=%s", dbFile.Name, err)
-				store.EndUpload(dbFile.Name, false)
+				store.EndUpload(dbFile.Name, db.UploadFailed)
 				continue
 			}
 
@@ -129,33 +129,51 @@ func Upload() error {
 			_, err = f.Seek(0, io.SeekStart)
 			if err != nil {
 				plog.Printf("seek file err for=%s err=%s", dbFile.Name, err)
-				store.EndUpload(dbFile.Name, false)
+				store.EndUpload(dbFile.Name, db.UploadFailed)
 				continue
 			}
 
-			dest, err := requestUploadURL(store, id, dbFile.Name, modTime, size)
+			fileHeader := make([]byte, 512)
+			io.ReadFull(f, fileHeader)
+
+			contentType := http.DetectContentType(fileHeader)
+
+			_, err = f.Seek(0, io.SeekStart)
+			if err != nil {
+				plog.Printf("seek file err for=%s err=%s", dbFile.Name, err)
+				store.EndUpload(dbFile.Name, db.UploadFailed)
+				continue
+			}
+
+			dest, err := requestUploadURL(store, id, dbFile.Name, contentType, modTime, size)
 			if err != nil {
 				plog.Printf("request upload url err for=%s err=%s", dbFile.Name, err)
-				store.EndUpload(dbFile.Name, false)
+				store.EndUpload(dbFile.Name, db.UploadFailed)
 				continue
 			}
 
-			err = uploadFile(f, dest)
+			if dest.Status == StatusSkipUpload {
+				plog.Printf("upload file skipped for=%s", dbFile.Name)
+				store.EndUpload(dbFile.Name, db.UploadSkipped)
+				continue
+			}
+
+			err = uploadFile(f, size, dest)
 			if err != nil {
 				plog.Printf("upload file err for=%s err=%s", dbFile.Name, err)
-				store.EndUpload(dbFile.Name, false)
+				store.EndUpload(dbFile.Name, db.UploadFailed)
 				continue
 			}
 
 			plog.Printf("upload file success for=%s", dbFile.Name)
-			store.EndUpload(dbFile.Name, true)
+			store.EndUpload(dbFile.Name, db.UploadSuccess)
 		}
 	}
 
 	return nil
 }
 
-func requestUploadURL(store *db.DB, id, name string, mtime time.Time, size int64) (*UploadDestination, error) {
+func requestUploadURL(store *db.DB, id, name, contentType string, mtime time.Time, size int64) (*UploadDestination, error) {
 	url, err := store.URL()
 	if err != nil {
 		return nil, err
@@ -170,10 +188,11 @@ func requestUploadURL(store *db.DB, id, name string, mtime time.Time, size int64
 	}
 
 	meta := FileMetadata{
-		ID:    id,
-		Name:  name,
-		Mtime: mtime,
-		Bytes: size,
+		ID:          id,
+		Name:        name,
+		Mtime:       mtime,
+		Bytes:       size,
+		ContentType: contentType,
 	}
 
 	jsontxt, err := json.Marshal(meta)
@@ -195,7 +214,7 @@ func requestUploadURL(store *db.DB, id, name string, mtime time.Time, size int64
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != 200 && resp.StatusCode != http.StatusConflict {
 		return nil, fmt.Errorf("non-200 status code: %d", resp.StatusCode)
 	}
 
@@ -208,7 +227,7 @@ func requestUploadURL(store *db.DB, id, name string, mtime time.Time, size int64
 	return &dest, nil
 }
 
-func uploadFile(r io.Reader, dest *UploadDestination) error {
+func uploadFile(r io.Reader, size int64, dest *UploadDestination) error {
 	if dest.Method == "" {
 		dest.Method = "PUT"
 	}
@@ -216,6 +235,9 @@ func uploadFile(r io.Reader, dest *UploadDestination) error {
 	if err != nil {
 		return err
 	}
+
+	req.Header = dest.Headers
+	req.ContentLength = size
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -229,13 +251,26 @@ func uploadFile(r io.Reader, dest *UploadDestination) error {
 }
 
 type FileMetadata struct {
-	ID    string    `json:"id"`
-	Name  string    `json:"name"`
-	Mtime time.Time `json:"mtime"`
-	Bytes int64     `json:"size"`
+	ID          string    `json:"id"`
+	Name        string    `json:"name"`
+	Mtime       time.Time `json:"mtime"`
+	Bytes       int64     `json:"size"`
+	ContentType string    `json:"content_type"`
+	TestUpload  bool      `json:"test_upload"`
 }
 
+type Status string
+
+var (
+	StatusOK         Status = "ok"
+	StatusSkipUpload Status = "skip" // file already exists
+	StatusErr        Status = "error"
+)
+
 type UploadDestination struct {
-	URL    string `json:"url"`
-	Method string `json:"method"`
+	Status  Status      `json:"status"`
+	Error   string      `json:"error,omitempty"`
+	URL     string      `json:"url"`
+	Method  string      `json:"method"`
+	Headers http.Header `json:"headers"`
 }
