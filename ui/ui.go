@@ -509,44 +509,49 @@ func drawSettings(gtx layout.Context, th *material.Theme) layout.Dimensions {
 }
 
 func (ui *UI) drawFiles(gtx layout.Context, th *material.Theme) layout.Dimensions {
+	return filesList.Layout(gtx, len(files), func(gtx layout.Context, i int) layout.Dimensions {
+		file := files[i]
 
-	return layout.Flex{
-		Axis: layout.Vertical,
-	}.Layout(gtx,
-		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			return material.H5(th, "Files").Layout(gtx)
-		}),
-		layout.Flexed(0.8, func(gtx layout.Context) layout.Dimensions {
+		border := widget.Border{Color: color.NRGBA{A: 0xff}, CornerRadius: unit.Dp(8), Width: unit.Px(2)}
 
-			return filesList.Layout(gtx, len(files), func(gtx layout.Context, i int) layout.Dimensions {
+		borderA := widget.Border{Color: color.NRGBA{A: 0xff, R: 0xFF}, Width: unit.Px(2)}
+		borderB := widget.Border{Color: color.NRGBA{A: 0xff, G: 0xFF}, Width: unit.Px(2)}
+		borderC := widget.Border{Color: color.NRGBA{A: 0xff, B: 0xFF}, Width: unit.Px(2)}
 
-				file := files[i]
+		return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+			gtx.Constraints.Max.Y = gtx.Px(unit.Dp(200))
+			return layout.Flex{
+				Axis: layout.Vertical,
+			}.Layout(gtx,
+				layout.Flexed(0.1, func(gtx C) D {
+					return borderB.Layout(gtx, material.H6(th, file.Name).Layout)
+				}),
+				layout.Flexed(0.5, func(gtx C) D {
 
-				border := widget.Border{Color: color.NRGBA{A: 0xff}, CornerRadius: unit.Dp(8), Width: unit.Px(2)}
+					img, err := ui.db.Thumbnail(file)
+					if err != nil {
+						img = image.NewRGBA(image.Rectangle{Max: image.Point{X: 256, Y: 256}})
+					}
 
-				return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-					return layout.Flex{Alignment: layout.Middle}.Layout(gtx,
-						layout.Flexed(0.8, func(gtx C) D {
-							img, err := ui.db.Thumbnail(file)
-							if err != nil {
-								img = image.NewRGBA(image.Rectangle{Max: image.Point{X: 256, Y: 256}})
-							}
-
-							wimg := widget.Image{Src: paint.NewImageOp(img)}
-							return wimg.Layout(gtx)
-						}),
-						layout.Flexed(0.6, func(gtx C) D {
-							return material.H6(th, file.Name).Layout(gtx)
-						}),
-
-						layout.Flexed(0.2, func(gtx layout.Context) layout.Dimensions {
-							return material.H6(th, file.Created.Format("01/02 15:04")).Layout(gtx)
-						}),
-					)
-				})
-			})
-		}),
-	)
+					wimg := widget.Image{Src: paint.NewImageOp(img)}
+					return borderA.Layout(gtx, wimg.Layout)
+				}),
+				layout.Flexed(0.1, func(gtx C) D {
+					return borderC.Layout(gtx, material.H6(th, file.Created.In(time.Local).Format("01/02 15:04")).Layout)
+				}),
+				layout.Flexed(0.1, func(gtx C) D {
+					return borderC.Layout(gtx, material.H6(th, file.State.String()).Layout)
+				}),
+				layout.Flexed(0.1, func(gtx C) D {
+					ts := file.UploadStarted
+					if !file.UploadEnd.IsZero() {
+						ts = file.UploadEnd
+					}
+					return borderC.Layout(gtx, material.H6(th, ts.In(time.Local).Format("01/02 15:04")).Layout)
+				}),
+			)
+		})
+	})
 }
 
 func drawDebug(gtx layout.Context, th *material.Theme) layout.Dimensions {
