@@ -1,6 +1,7 @@
 package db
 
 import (
+	"container/list"
 	"errors"
 	"image"
 	"image/color"
@@ -23,6 +24,9 @@ var (
 	size                   = 512
 	startProcessThumbsOnce sync.Once
 	thumbReqChan           = make(chan File, 10)
+
+	imgCacheMux sync.Mutex
+	imgCache    = list.New()
 )
 
 func (db *DB) Thumbnail(dbf File) (image.Image, error) {
@@ -50,12 +54,58 @@ func (db *DB) Thumbnail(dbf File) (image.Image, error) {
 
 		return myimage, nil
 	}
+	defer f.Close()
+
+	img := lruGet(dbf.Name)
+	if img != nil {
+		return img, nil
+	}
 
 	log.Printf("thumb found for %s", dbf.Path)
 
-	img, _, err := image.Decode(f)
+	img, _, err = image.Decode(f)
+	if err != nil {
+		return nil, err
+	}
 	log.Printf("decode done for %s", dbf.Path)
-	return img, err
+	lruPut(dbf.Name, img)
+	return img, nil
+}
+
+type cacheImg struct {
+	name string
+	img  image.Image
+}
+
+func lruGet(name string) image.Image {
+	imgCacheMux.Lock()
+	defer imgCacheMux.Unlock()
+
+	for e := imgCache.Front(); e != nil; e = e.Next() {
+		cacheInfo := e.Value.(cacheImg)
+		if cacheInfo.name == name {
+			imgCache.MoveToFront(e)
+			return cacheInfo.img
+		}
+	}
+
+	return nil
+}
+
+func lruPut(name string, img image.Image) {
+	imgCacheMux.Lock()
+	defer imgCacheMux.Unlock()
+
+	cacheObj := cacheImg{
+		name: name,
+		img:  img,
+	}
+
+	imgCache.PushFront(cacheObj)
+
+	if imgCache.Len() > 10 {
+		imgCache.Remove(imgCache.Back())
+	}
 }
 
 func processThumbs(cacheDir string) {
