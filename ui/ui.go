@@ -118,6 +118,9 @@ func (ui *UI) loop(w *app.Window) error {
 		pendingUploads, _ = ui.db.PendingUploads()
 		recentUploads, _ = ui.db.UploadsSince(time.Now().Add(-30*24*time.Hour), db.UploadSuccess)
 		recentFailedUploads, _ = ui.db.UploadsSince(time.Now().Add(-30*24*time.Hour), db.UploadFailed)
+
+		files, _ = ui.db.GetFiles()
+
 	}
 	recheckStats()
 
@@ -222,7 +225,7 @@ func (ui *UI) loop(w *app.Window) error {
 					Right:  e.Insets.Right,
 					Top:    e.Insets.Top,
 				}.Layout(gtx, func(gtx C) D {
-					return drawTabs(gtx, th)
+					return ui.drawTabs(gtx, th)
 				})
 				e.Frame(gtx.Ops)
 			}
@@ -257,6 +260,16 @@ var (
 	settingsList = &layout.List{
 		Axis: layout.Vertical,
 	}
+
+	debugList = &layout.List{
+		Axis: layout.Vertical,
+	}
+
+	filesList = &layout.List{
+		Axis: layout.Vertical,
+	}
+
+	files []db.File
 
 	topLabel       = "Android Media Backup"
 	enabledToggle  = new(widget.Bool)
@@ -298,7 +311,7 @@ type (
 	D = layout.Dimensions
 )
 
-func drawTabs(gtx layout.Context, th *material.Theme) layout.Dimensions {
+func (ui *UI) drawTabs(gtx layout.Context, th *material.Theme) layout.Dimensions {
 	return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 		layout.Rigid(func(gtx C) D {
 			return material.H4(th, topLabel).Layout(gtx)
@@ -345,6 +358,8 @@ func drawTabs(gtx layout.Context, th *material.Theme) layout.Dimensions {
 				switch selected {
 				case "Settings":
 					return drawSettings(gtx, th)
+				case "Files":
+					return ui.drawFiles(gtx, th)
 				case "Debug":
 					return drawDebug(gtx, th)
 				default:
@@ -493,6 +508,47 @@ func drawSettings(gtx layout.Context, th *material.Theme) layout.Dimensions {
 	})
 }
 
+func (ui *UI) drawFiles(gtx layout.Context, th *material.Theme) layout.Dimensions {
+
+	return layout.Flex{
+		Axis: layout.Vertical,
+	}.Layout(gtx,
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return material.H5(th, "Files").Layout(gtx)
+		}),
+		layout.Flexed(0.8, func(gtx layout.Context) layout.Dimensions {
+
+			return filesList.Layout(gtx, len(files), func(gtx layout.Context, i int) layout.Dimensions {
+
+				file := files[i]
+
+				border := widget.Border{Color: color.NRGBA{A: 0xff}, CornerRadius: unit.Dp(8), Width: unit.Px(2)}
+
+				return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+					return layout.Flex{Alignment: layout.Middle}.Layout(gtx,
+						layout.Flexed(0.8, func(gtx C) D {
+							img, err := ui.db.Thumbnail(file)
+							if err != nil {
+								img = image.NewRGBA(image.Rectangle{Max: image.Point{X: 256, Y: 256}})
+							}
+
+							wimg := widget.Image{Src: paint.NewImageOp(img)}
+							return wimg.Layout(gtx)
+						}),
+						layout.Flexed(0.6, func(gtx C) D {
+							return material.H6(th, file.Name).Layout(gtx)
+						}),
+
+						layout.Flexed(0.2, func(gtx layout.Context) layout.Dimensions {
+							return material.H6(th, file.Created.Format("01/02 15:04")).Layout(gtx)
+						}),
+					)
+				})
+			})
+		}),
+	)
+}
+
 func drawDebug(gtx layout.Context, th *material.Theme) layout.Dimensions {
 	border := widget.Border{Color: color.NRGBA{A: 0xff}, CornerRadius: unit.Dp(8), Width: unit.Px(2)}
 
@@ -507,7 +563,7 @@ func drawDebug(gtx layout.Context, th *material.Theme) layout.Dimensions {
 		},
 	}
 
-	return settingsList.Layout(gtx, len(widgets), func(gtx layout.Context, i int) layout.Dimensions {
+	return debugList.Layout(gtx, len(widgets), func(gtx layout.Context, i int) layout.Dimensions {
 		return layout.UniformInset(unit.Dp(16)).Layout(gtx, widgets[i])
 	})
 }

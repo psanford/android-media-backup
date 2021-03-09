@@ -3,16 +3,19 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"path/filepath"
 	"time"
 
 	"gioui.org/app"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/psanford/android-media-backup/jgo/androiddir"
 	"github.com/retailnext/unixtime"
 )
 
 type DB struct {
-	DB *sql.DB
+	DB       *sql.DB
+	cacheDir string
 }
 
 func Open() (*DB, error) {
@@ -31,7 +34,14 @@ func Open() (*DB, error) {
 		return nil, err
 	}
 
-	return &DB{db}, nil
+	cacheDir := androiddir.CacheDir()
+
+	log.Printf("cache dir: %s", cacheDir)
+
+	return &DB{
+		DB:       db,
+		cacheDir: cacheDir,
+	}, nil
 }
 
 type UploadState int
