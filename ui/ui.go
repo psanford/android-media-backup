@@ -25,6 +25,7 @@ import (
 	"github.com/psanford/android-media-backup/jgo"
 	"github.com/psanford/android-media-backup/ui/plog"
 	"github.com/psanford/android-media-backup/upload"
+	"github.com/psanford/android-media-backup/version"
 )
 
 type UI struct {
@@ -558,6 +559,8 @@ func drawDebug(gtx layout.Context, th *material.Theme) layout.Dimensions {
 	border := widget.Border{Color: color.NRGBA{A: 0xff}, CornerRadius: unit.Dp(8), Width: unit.Px(2)}
 
 	widgets := []layout.Widget{
+		material.H5(th, "Version:").Layout,
+		material.H6(th, version.Version).Layout,
 		material.H5(th, "Event Log").Layout,
 		func(gtx C) D {
 			return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
