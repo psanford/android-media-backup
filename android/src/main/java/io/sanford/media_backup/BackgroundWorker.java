@@ -16,19 +16,18 @@ public class BackgroundWorker extends Worker {
 
   public BackgroundWorker(Context context, WorkerParameters params) {
     super(context, params);
-    Log.d("sanford android-media-backup", "BackgroundWorker()");
   }
 
   public Result doWork() {
-    Log.d("sanford android-media-backup", "start runBackgroundJob()");
+    Log.d("io.sanford.media_backup", "start runBackgroundJob()");
     runBackgroundJob();
-    Log.d("sanford android-media-backup", "complete runBackgroundJob()");
+    Log.d("io.sanford.media_backup", "complete runBackgroundJob()");
 
     return Result.success();
   }
 
   static void launchBackgroundWorker(Context context) {
-    Log.d("sanford android-media-backup", "LaunchBackgroundWorker");
+    Log.d("io.sanford.media_backup", "LaunchBackgroundWorker");
     Constraints constraints = new Constraints.Builder()
       .setRequiresBatteryNotLow(true)
       .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -48,7 +47,6 @@ public class BackgroundWorker extends Worker {
       .build();
 
     WorkManager.getInstance().enqueue(workRequest);
-    Log.d("sanford android-media-backup", "LaunchBackgroundWorker DONE");
   }
 
   static private native void runBackgroundJob();

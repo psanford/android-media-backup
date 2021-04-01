@@ -30,7 +30,6 @@ var (
 )
 
 func (db *DB) Thumbnail(dbf File) (image.Image, error) {
-	log.Printf("get thumb for %s", dbf.Path)
 	if db.cacheDir == "" {
 		log.Printf("no cache dir!")
 		return nil, errors.New("No cachedir found")
@@ -61,13 +60,10 @@ func (db *DB) Thumbnail(dbf File) (image.Image, error) {
 		return img, nil
 	}
 
-	log.Printf("thumb found for %s", dbf.Path)
-
 	img, _, err = image.Decode(f)
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("decode done for %s", dbf.Path)
 	lruPut(dbf.Name, img)
 	return img, nil
 }
