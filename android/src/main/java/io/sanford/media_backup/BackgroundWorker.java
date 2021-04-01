@@ -1,4 +1,4 @@
-package io.sanford.jgo;
+package io.sanford.media_backup;
 
 import java.util.concurrent.TimeUnit;
 import android.content.Context;

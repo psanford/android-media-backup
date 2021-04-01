@@ -1,4 +1,4 @@
-package io.sanford.jgo;
+package io.sanford.media_backup;
 
 import android.Manifest;
 import android.app.Activity;

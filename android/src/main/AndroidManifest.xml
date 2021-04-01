@@ -23,7 +23,7 @@
       </intent-filter>
     </activity>
 
-    <receiver android:name="io.sanford.jgo.BootBroadcastReceiver" >
+    <receiver android:name="io.sanford.media_backup.BroadcastReceiver" >
       <intent-filter>
         <action android:name="android.intent.action.BOOT_COMPLETED" />
         <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />

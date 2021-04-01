@@ -39,9 +39,9 @@ func RequestPermission(viewEvt app.ViewEvent) <-chan PermResult {
 			var uptr = app.AppContext()
 			appCtx := *(*jni.Object)(unsafe.Pointer(&uptr))
 			loader := jni.ClassLoaderFor(env, appCtx)
-			cls, err := jni.LoadClass(env, loader, "io.sanford.jgo.Jni")
+			cls, err := jni.LoadClass(env, loader, "io.sanford.media_backup.Jni")
 			if err != nil {
-				log.Printf("Load io.sanford.jgo.Jni error: %s", err)
+				log.Printf("Load io.sanford.media_backup.Jni error: %s", err)
 			}
 
 			mid := jni.GetMethodID(env, cls, "<init>", "()V")
@@ -73,9 +73,9 @@ func StartBGWorker() error {
 		var uptr = app.AppContext()
 		appCtx := *(*jni.Object)(unsafe.Pointer(&uptr))
 		loader := jni.ClassLoaderFor(env, appCtx)
-		cls, err := jni.LoadClass(env, loader, "io.sanford.jgo.BackgroundWorker")
+		cls, err := jni.LoadClass(env, loader, "io.sanford.media_backup.BackgroundWorker")
 		if err != nil {
-			log.Printf("Load io.sanford.jgo.BackgroundWorker error: %s", err)
+			log.Printf("Load io.sanford.media_backup.BackgroundWorker error: %s", err)
 		}
 
 		mid := jni.GetStaticMethodID(env, cls, "launchBackgroundWorker", "(Landroid/content/Context;)V")
@@ -85,8 +85,8 @@ func StartBGWorker() error {
 	return err
 }
 
-//export Java_io_sanford_jgo_Jni_permissionResult
-func Java_io_sanford_jgo_Jni_permissionResult(env *C.JNIEnv, cls C.jclass, jok C.jboolean) {
+//export Java_io_sanford_media_backup_Jni_permissionResult
+func Java_io_sanford_media_backup_Jni_permissionResult(env *C.JNIEnv, cls C.jclass, jok C.jboolean) {
 	log.Printf("permissionResult: %d", jok)
 
 	var authorized bool
@@ -106,8 +106,8 @@ func Java_io_sanford_jgo_Jni_permissionResult(env *C.JNIEnv, cls C.jclass, jok C
 	pendingResultMux.Unlock()
 }
 
-//export Java_io_sanford_jgo_BackgroundWorker_runBackgroundJob
-func Java_io_sanford_jgo_BackgroundWorker_runBackgroundJob() {
+//export Java_io_sanford_media_backup_BackgroundWorker_runBackgroundJob
+func Java_io_sanford_media_backup_BackgroundWorker_runBackgroundJob() {
 	log.Printf("begin upload work")
 	err := upload.Upload()
 	if err != nil {

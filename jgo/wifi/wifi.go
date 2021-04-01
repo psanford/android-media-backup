@@ -48,9 +48,9 @@ func ConnectionState() (ConnState, error) {
 		var uptr = app.AppContext()
 		appCtx := *(*jni.Object)(unsafe.Pointer(&uptr))
 		loader := jni.ClassLoaderFor(env, appCtx)
-		cls, err := jni.LoadClass(env, loader, "io.sanford.jgo.Jni")
+		cls, err := jni.LoadClass(env, loader, "io.sanford.media_backup.Jni")
 		if err != nil {
-			log.Printf("Load io.sanford.jgo.Jni error: %s", err)
+			log.Printf("Load io.sanford.media_backup.Jni error: %s", err)
 		}
 
 		mid := jni.GetStaticMethodID(env, cls, "connectionState", "(Landroid/content/Context;)I")
