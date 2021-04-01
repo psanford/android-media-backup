@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"io/ioutil"
 	"log"
 	"strconv"
 	"sync"
@@ -133,17 +132,6 @@ func (ui *UI) loop(w *app.Window) error {
 		case result := <-permResult:
 			permResult = nil
 			plog.Printf("Perm result: %t %s", result.Authorized, result.Err)
-
-			files, err := ioutil.ReadDir("/sdcard/DCIM/Camera")
-			if err != nil {
-				plog.Printf("read sdcard err: %s", err)
-			} else {
-				var names []string
-				for _, f := range files {
-					names = append(names, f.Name())
-				}
-				plog.Printf("sdcard pictures: %+v", names)
-			}
 			w.Invalidate()
 
 		case logMsg := <-plog.MsgChan():

@@ -1,15 +1,16 @@
 package io.sanford.media_backup;
 
-import java.util.concurrent.TimeUnit;
 import android.content.Context;
 import android.util.Log;
 import androidx.work.Constraints;
-import androidx.work.NetworkType;
+import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.ListenableWorker.Result;
-import androidx.work.Worker;
-import androidx.work.WorkManager;
-import androidx.work.WorkerParameters;
+import androidx.work.NetworkType;
 import androidx.work.PeriodicWorkRequest;
+import androidx.work.WorkManager;
+import androidx.work.Worker;
+import androidx.work.WorkerParameters;
+import java.util.concurrent.TimeUnit;
 
 public class BackgroundWorker extends Worker {
    private static final String WORKER_TAG = BackgroundWorker.class.getSimpleName();
@@ -38,15 +39,12 @@ public class BackgroundWorker extends Worker {
       // We might also want to consider an option for
       // .setRequiresCharging(true)
 
-    // cancel any existing workers
-    WorkManager.getInstance().cancelAllWork();
-
     PeriodicWorkRequest workRequest = new PeriodicWorkRequest.Builder(BackgroundWorker.class, 15, TimeUnit.MINUTES)
       .addTag(BackgroundWorker.WORKER_TAG)
       .setConstraints(constraints)
       .build();
 
-    WorkManager.getInstance().enqueue(workRequest);
+    WorkManager.getInstance().enqueueUniquePeriodicWork("UploadJob", ExistingPeriodicWorkPolicy.KEEP, workRequest);
   }
 
   static private native void runBackgroundJob();
