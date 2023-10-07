@@ -504,12 +504,13 @@ func (ui *UI) drawFiles(gtx layout.Context, th *material.Theme) layout.Dimension
 
 		border := widget.Border{Color: color.NRGBA{A: 0xff}, CornerRadius: unit.Dp(8), Width: unit.Dp(2)}
 
-		borderA := widget.Border{Color: color.NRGBA{A: 0xff, R: 0xFF}, Width: unit.Dp(2)}
-		borderB := widget.Border{Color: color.NRGBA{A: 0xff, G: 0xFF}, Width: unit.Dp(2)}
-		borderC := widget.Border{Color: color.NRGBA{A: 0xff, B: 0xFF}, Width: unit.Dp(2)}
+		borderA := widget.Border{Color: color.NRGBA{A: 0xff, R: 0xFF}, Width: unit.Dp(0)}
+		borderB := widget.Border{Color: color.NRGBA{A: 0xff, G: 0xFF}, Width: unit.Dp(0)}
+		borderC := widget.Border{Color: color.NRGBA{A: 0xff, B: 0xFF}, Width: unit.Dp(0)}
 
 		return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-			gtx.Constraints.Max.Y = 200
+			sz := gtx.Dp(unit.Dp(300))
+			gtx.Constraints = layout.Exact(gtx.Constraints.Constrain(image.Point{X: sz, Y: sz}))
 			return layout.Flex{
 				Axis: layout.Vertical,
 			}.Layout(gtx,
@@ -523,7 +524,10 @@ func (ui *UI) drawFiles(gtx layout.Context, th *material.Theme) layout.Dimension
 						img = image.NewRGBA(image.Rectangle{Max: image.Point{X: 256, Y: 256}})
 					}
 
-					wimg := widget.Image{Src: paint.NewImageOp(img)}
+					wimg := widget.Image{
+						Src: paint.NewImageOp(img),
+						Fit: widget.Contain,
+					}
 					return borderA.Layout(gtx, wimg.Layout)
 				}),
 				layout.Flexed(0.1, func(gtx C) D {
