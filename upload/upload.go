@@ -64,6 +64,10 @@ func Upload() error {
 			return errors.New("no wifi")
 		}
 
+		if f.IsDir() {
+			continue
+		}
+
 		filename := f.Name()
 		fpath := filepath.Join(mediaPath, filename)
 		modTime := f.ModTime()
@@ -241,6 +245,10 @@ func ScanFiles(store *db.DB) ([]fs.FileInfo, map[string]*db.File, error) {
 	}
 
 	for _, f := range files {
+		plog.Printf("ScanFiles handle %s", f.Name())
+		if f.IsDir() {
+			continue
+		}
 		filename := f.Name()
 		pp := filepath.Join(mediaPath, filename)
 		modTime := f.ModTime()
