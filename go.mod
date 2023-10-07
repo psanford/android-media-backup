@@ -3,7 +3,7 @@ module github.com/psanford/android-media-backup
 go 1.20
 
 require (
-	gioui.org v0.2.0
+	gioui.org v0.3.1
 	gioui.org/cmd v0.0.0-20230711191157-4128f253e857
 	git.wow.st/gmp/jni v0.0.0-20200827154156-014cd5c7c4c0
 	github.com/disintegration/imageorient v0.0.0-20180920195336-8147d86e83ec
