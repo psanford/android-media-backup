@@ -184,6 +184,11 @@ func (db *DB) ResetFiles() error {
 	return err
 }
 
+func (db *DB) ResetFailedUploads() error {
+	_, err := db.DB.Exec("update file set state = ? where state = ?", UploadPending, UploadFailed)
+	return err
+}
+
 var (
 	confKeyEnabled     = "enabled"
 	confKeyURL         = "url"

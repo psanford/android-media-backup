@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"gioui.org/app"
-	"gioui.org/font/gofont"
 	"gioui.org/io/system"
 	"gioui.org/layout"
 	"gioui.org/op"
@@ -34,7 +33,7 @@ type UI struct {
 func New() *UI {
 	store, err := db.Open()
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("Open db err: %s", err))
 	}
 	return &UI{
 		db: store,
@@ -96,7 +95,7 @@ func (ui *UI) loop(w *app.Window) error {
 		permResult <-chan jgo.PermResult
 		viewEvent  app.ViewEvent
 
-		th           = material.NewTheme(gofont.Collection())
+		th           = material.NewTheme()
 		manualUpload = make(chan chan struct{})
 		minuteTicker = time.NewTicker(1 * time.Minute)
 	)
@@ -161,6 +160,13 @@ func (ui *UI) loop(w *app.Window) error {
 				for resetBtn.Clicked() {
 					resetFilesOnce.Do(func() {
 						ui.db.ResetFiles()
+					})
+				}
+
+				var resetFailedFilesOnce sync.Once
+				for resetFailedBtn.Clicked() {
+					resetFailedFilesOnce.Do(func() {
+						ui.db.ResetFailedUploads()
 					})
 				}
 
@@ -239,6 +245,7 @@ var (
 	uploadInProgress = false
 	uploadBtn        = new(widget.Clickable)
 	resetBtn         = new(widget.Clickable)
+	resetFailedBtn   = new(widget.Clickable)
 
 	lastSyncTime        time.Time
 	lastFileUpload      time.Time
@@ -320,7 +327,7 @@ func (ui *UI) drawTabs(gtx layout.Context, th *material.Theme) layout.Dimensions
 				return layout.Stack{Alignment: layout.S}.Layout(gtx,
 					layout.Stacked(func(gtx C) D {
 						dims := material.Clickable(gtx, &t.btn, func(gtx C) D {
-							return layout.UniformInset(unit.Sp(12)).Layout(gtx,
+							return layout.UniformInset(unit.Dp(12)).Layout(gtx,
 								material.H6(th, t.Title).Layout,
 							)
 						})
@@ -331,7 +338,7 @@ func (ui *UI) drawTabs(gtx layout.Context, th *material.Theme) layout.Dimensions
 						if tabs.selected != tabIdx {
 							return layout.Dimensions{}
 						}
-						tabHeight := gtx.Px(unit.Dp(4))
+						tabHeight := 4
 						tabRect := image.Rect(0, 0, tabWidth, tabHeight)
 						paint.FillShape(gtx.Ops, th.Palette.ContrastBg, clip.Rect(tabRect).Op())
 						return layout.Dimensions{
@@ -373,7 +380,7 @@ func drawSettings(gtx layout.Context, th *material.Theme) layout.Dimensions {
 				}),
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 					e := material.Editor(th, editor, hint)
-					border := widget.Border{Color: color.NRGBA{A: 0xff}, CornerRadius: unit.Dp(8), Width: unit.Px(2)}
+					border := widget.Border{Color: color.NRGBA{A: 0xff}, CornerRadius: unit.Dp(8), Width: unit.Dp(2)}
 					return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 						return layout.UniformInset(unit.Dp(8)).Layout(gtx, e.Layout)
 					})
@@ -489,7 +496,8 @@ func drawSettings(gtx layout.Context, th *material.Theme) layout.Dimensions {
 			btn := material.Button(th, uploadBtn, "Test Upload")
 			return btn.Layout(gtx)
 		},
-		material.Button(th, resetBtn, "Reset Files").Layout,
+		material.Button(th, resetFailedBtn, "Reset Failed Uploads").Layout,
+		material.Button(th, resetBtn, "Reset Full DB State").Layout,
 	}
 
 	return settingsList.Layout(gtx, len(widgets), func(gtx layout.Context, i int) layout.Dimensions {
@@ -501,14 +509,14 @@ func (ui *UI) drawFiles(gtx layout.Context, th *material.Theme) layout.Dimension
 	return filesList.Layout(gtx, len(files), func(gtx layout.Context, i int) layout.Dimensions {
 		file := files[i]
 
-		border := widget.Border{Color: color.NRGBA{A: 0xff}, CornerRadius: unit.Dp(8), Width: unit.Px(2)}
+		border := widget.Border{Color: color.NRGBA{A: 0xff}, CornerRadius: unit.Dp(8), Width: unit.Dp(2)}
 
-		borderA := widget.Border{Color: color.NRGBA{A: 0xff, R: 0xFF}, Width: unit.Px(2)}
-		borderB := widget.Border{Color: color.NRGBA{A: 0xff, G: 0xFF}, Width: unit.Px(2)}
-		borderC := widget.Border{Color: color.NRGBA{A: 0xff, B: 0xFF}, Width: unit.Px(2)}
+		borderA := widget.Border{Color: color.NRGBA{A: 0xff, R: 0xFF}, Width: unit.Dp(2)}
+		borderB := widget.Border{Color: color.NRGBA{A: 0xff, G: 0xFF}, Width: unit.Dp(2)}
+		borderC := widget.Border{Color: color.NRGBA{A: 0xff, B: 0xFF}, Width: unit.Dp(2)}
 
 		return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-			gtx.Constraints.Max.Y = gtx.Px(unit.Dp(200))
+			gtx.Constraints.Max.Y = 200
 			return layout.Flex{
 				Axis: layout.Vertical,
 			}.Layout(gtx,
@@ -544,7 +552,7 @@ func (ui *UI) drawFiles(gtx layout.Context, th *material.Theme) layout.Dimension
 }
 
 func drawDebug(gtx layout.Context, th *material.Theme) layout.Dimensions {
-	border := widget.Border{Color: color.NRGBA{A: 0xff}, CornerRadius: unit.Dp(8), Width: unit.Px(2)}
+	border := widget.Border{Color: color.NRGBA{A: 0xff}, CornerRadius: unit.Dp(8), Width: unit.Dp(2)}
 
 	widgets := []layout.Widget{
 		material.H5(th, "Version:").Layout,
@@ -552,8 +560,8 @@ func drawDebug(gtx layout.Context, th *material.Theme) layout.Dimensions {
 		material.H5(th, "Event Log").Layout,
 		func(gtx C) D {
 			return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				gtx.Constraints.Min.Y = gtx.Px(unit.Dp(500))
-				gtx.Constraints.Max.Y = gtx.Px(unit.Dp(500))
+				gtx.Constraints.Min.Y = gtx.Dp(500)
+				gtx.Constraints.Max.Y = gtx.Dp(500)
 				return material.Editor(th, logText, "").Layout(gtx)
 			})
 		},
