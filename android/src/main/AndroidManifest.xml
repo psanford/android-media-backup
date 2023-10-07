@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" standalone="no"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="io.sanford.media_backup">
+          >
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
   <uses-permission android:name="android.permission.INTERNET"/>
@@ -16,6 +16,7 @@
         android:label="Media-Backup"
         android:name="org.gioui.GioActivity"
         android:theme="@style/Theme.GioApp"
+        android:exported="true"
         android:windowSoftInputMode="adjustResize">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
@@ -23,7 +24,9 @@
       </intent-filter>
     </activity>
 
-    <receiver android:name="io.sanford.media_backup.BroadcastReceiver" >
+    <receiver android:name="io.sanford.media_backup.BroadcastReceiver"
+              android:exported="true">
+
       <intent-filter>
         <action android:name="android.intent.action.BOOT_COMPLETED" />
         <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />

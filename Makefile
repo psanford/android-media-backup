@@ -8,3 +8,9 @@ media-backup.apk: $(AAR)
 $(AAR): $(shell find . -name '*.go' -o -name '*.java' -type f)
 	mkdir -p $(@D)
 	go run gioui.org/cmd/gogio -ldflags "-X 'github.com/psanford/android-media-backup/version.Version=$(shell date --rfc-3339=seconds)'" -buildmode archive -target android -appid io.sanford.media_backup -o $@ .
+
+
+clean:
+	rm -rf $(AAR) media-backup.apk
+
+.PHONY: clean

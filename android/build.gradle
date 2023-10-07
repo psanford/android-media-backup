@@ -4,7 +4,7 @@ buildscript {
         jcenter()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.6.0'
+        classpath 'com.android.tools.build:gradle:7.4.2'
     }
 }
 
@@ -21,11 +21,13 @@ allprojects {
 apply plugin: 'com.android.application'
 
 android {
+    namespace "io.sanford.media_backup"
     ndkVersion "21.3.6528147"
-    compileSdkVersion 29
+    buildToolsVersion "33.0.2"
+    compileSdkVersion 33
     defaultConfig {
         minSdkVersion 23
-        targetSdkVersion 29
+        targetSdkVersion 33
         versionCode 28
         versionName "1.0.0"
     }
@@ -37,6 +39,6 @@ android {
 
 dependencies {
     implementation "androidx.core:core:1.2.0"
-    implementation 'androidx.work:work-runtime:2.0.1-rc01'
+    implementation 'androidx.work:work-runtime:2.7.1'
     implementation ':android-media-backup@aar'
 }
