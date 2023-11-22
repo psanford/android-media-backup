@@ -221,6 +221,9 @@ func (db *DB) SetURL(url string) error {
 func (db *DB) Username() (string, error) {
 	var username string
 	err := db.confGet(confKeyUsername, &username)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
 	return username, err
 }
 
@@ -231,6 +234,9 @@ func (db *DB) SetUsername(username string) error {
 func (db *DB) Password() (string, error) {
 	var password string
 	err := db.confGet(confKeyPassword, &password)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
 	return password, err
 }
 
