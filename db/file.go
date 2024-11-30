@@ -10,7 +10,6 @@ import (
 	"image/jpeg"
 	_ "image/jpeg"
 	_ "image/png"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -131,7 +130,7 @@ func processThumbs(cacheDir string) {
 
 			img = resize.Thumbnail(uint(size), uint(size), img, resize.NearestNeighbor)
 
-			tmpFile, err := ioutil.TempFile(cacheDir, srcFile.Name+".tmp")
+			tmpFile, err := os.CreateTemp(cacheDir, srcFile.Name+".tmp")
 			if err != nil {
 				log.Printf("thumb err open tmp file=%s err=%s", srcFile.Name, err)
 				return

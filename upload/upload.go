@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -226,11 +225,13 @@ func uploadFile(r io.Reader, size int64, dest *UploadDestination) error {
 }
 
 func ScanFiles(store *db.DB) ([]fs.FileInfo, map[string]*db.File, error) {
-	files, err := ioutil.ReadDir(mediaPath)
+	plog.Printf("ScanFiles start")
+	files, err := os.ReadDir(mediaPath)
 	if err != nil {
 		plog.Printf("read sdcard err: %s", err)
 		return nil, nil, err
 	}
+	plog.Printf("ScanFiles file count=%d", len(files))
 
 	dbFiles, err := store.GetFiles()
 	if err != nil {
@@ -244,15 +245,25 @@ func ScanFiles(store *db.DB) ([]fs.FileInfo, map[string]*db.File, error) {
 		dbFilesMap[dbFile.Name] = &dbFile
 	}
 
+	fileInfos := make([]fs.FileInfo, 0, len(files))
+
 	for _, f := range files {
 		plog.Printf("ScanFiles handle %s", f.Name())
 		if f.IsDir() {
 			continue
 		}
-		filename := f.Name()
+		ff, err := f.Info()
+		if err != nil {
+			plog.Printf("ScanFiles f.Info err: %s", err)
+			continue
+		}
+
+		fileInfos = append(fileInfos, ff)
+
+		filename := ff.Name()
 		pp := filepath.Join(mediaPath, filename)
-		modTime := f.ModTime()
-		size := f.Size()
+		modTime := ff.ModTime()
+		size := ff.Size()
 
 		plog.Printf("bgjob file=%s time=%s size=%d", filename, modTime, size)
 
@@ -270,7 +281,7 @@ func ScanFiles(store *db.DB) ([]fs.FileInfo, map[string]*db.File, error) {
 			plog.Printf("bgjob %s in db, state is %s", filename, dbFile.State)
 		}
 	}
-	return files, dbFilesMap, nil
+	return fileInfos, dbFilesMap, nil
 }
 
 type FileMetadata struct {
