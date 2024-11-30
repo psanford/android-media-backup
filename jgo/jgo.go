@@ -32,6 +32,8 @@ func RequestPermission(viewEvt app.ViewEvent) <-chan PermResult {
 	pendingResults = append(pendingResults, pendingResult)
 	pendingResultMux.Unlock()
 
+	androidViewEvt := viewEvt.(*app.AndroidViewEvent)
+
 	go func() {
 		jvm := jni.JVMFor(app.JavaVM())
 		err := jni.Do(jvm, func(env jni.Env) error {
@@ -53,7 +55,7 @@ func RequestPermission(viewEvt app.ViewEvent) <-chan PermResult {
 
 			mid = jni.GetMethodID(env, cls, "register", "(Landroid/view/View;)V")
 
-			jni.CallVoidMethod(env, inst, mid, jni.Value(viewEvt.View))
+			jni.CallVoidMethod(env, inst, mid, jni.Value(androidViewEvt.View))
 			return err
 		})
 

@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"gioui.org/app"
-	"gioui.org/io/system"
+	"gioui.org/io/event"
 	"gioui.org/layout"
 	"gioui.org/op"
 	"gioui.org/op/clip"
@@ -41,7 +41,8 @@ func New() *UI {
 }
 
 func (ui *UI) Run() error {
-	w := app.NewWindow(app.Size(unit.Dp(800), unit.Dp(700)))
+	w := new(app.Window)
+	w.Option(app.Size(unit.Dp(800), unit.Dp(700)))
 	dataDir, err := app.DataDir()
 	if err != nil {
 		plog.Printf("DataDir err: %s", err)
@@ -123,6 +124,20 @@ func (ui *UI) loop(w *app.Window) error {
 	}
 	recheckStats()
 
+	events := make(chan event.Event)
+	acks := make(chan struct{})
+
+	go func() {
+		for {
+			ev := w.Event()
+			events <- ev
+			<-acks
+			if _, ok := ev.(app.DestroyEvent); ok {
+				return
+			}
+		}
+	}()
+
 	var ops op.Ops
 	for {
 		select {
@@ -136,35 +151,37 @@ func (ui *UI) loop(w *app.Window) error {
 		case logMsg := <-plog.MsgChan():
 			logText.Insert(logMsg)
 
-		case e := <-w.Events():
+		case e := <-events:
 			switch e := e.(type) {
 			case app.ViewEvent:
 				viewEvent = e
-			case system.DestroyEvent:
+				acks <- struct{}{}
+			case app.DestroyEvent:
+				acks <- struct{}{}
 				return e.Err
-			case system.StageEvent:
-				if e.Stage == system.StageRunning {
-					plog.Printf("recheck files")
-					upload.ScanFiles(ui.db)
-					recheckStats()
-				}
-			case system.FrameEvent:
-				gtx := layout.NewContext(&ops, e)
+			case app.ConfigEvent:
+				plog.Printf("config event: recheck files")
+				upload.ScanFiles(ui.db)
+				recheckStats()
+				plog.Printf("config event: recheck files done")
+				acks <- struct{}{}
+			case app.FrameEvent:
+				gtx := app.NewContext(&ops, e)
 
 				var testUploadClicked bool
-				for uploadBtn.Clicked() {
+				if uploadBtn.Clicked(gtx) {
 					testUploadClicked = true
 				}
 
 				var resetFilesOnce sync.Once
-				for resetBtn.Clicked() {
+				if resetBtn.Clicked(gtx) {
 					resetFilesOnce.Do(func() {
 						ui.db.ResetFiles()
 					})
 				}
 
 				var resetFailedFilesOnce sync.Once
-				for resetFailedBtn.Clicked() {
+				for resetFailedBtn.Clicked(gtx) {
 					resetFailedFilesOnce.Do(func() {
 						ui.db.ResetFailedUploads()
 					})
@@ -200,12 +217,12 @@ func (ui *UI) loop(w *app.Window) error {
 					}
 				}
 
-				if wifiOnlyToggle.Changed() {
+				if wifiOnlyToggle.Update(gtx) {
 					allowMobile := !wifiOnlyToggle.Value
 					ui.db.SetAllowMobileUpload(allowMobile)
 				}
 
-				if enabledToggle.Changed() {
+				if enabledToggle.Update(gtx) {
 					enabled := enabledToggle.Value
 					ui.db.SetEnabled(enabled)
 
@@ -216,6 +233,11 @@ func (ui *UI) loop(w *app.Window) error {
 
 				ui.drawTabs(gtx, th)
 				e.Frame(gtx.Ops)
+				acks <- struct{}{}
+
+			default:
+				plog.Printf("unhandled event: %+v %T", e, e)
+				acks <- struct{}{}
 			}
 		}
 	}
@@ -308,7 +330,7 @@ func (ui *UI) drawTabs(gtx layout.Context, th *material.Theme) layout.Dimensions
 		layout.Rigid(func(gtx C) D {
 			return tabs.list.Layout(gtx, len(tabs.tabs), func(gtx C, tabIdx int) D {
 				t := &tabs.tabs[tabIdx]
-				if t.btn.Clicked() {
+				if t.btn.Clicked(gtx) {
 					if tabs.selected < tabIdx {
 						slider.PushLeft()
 					} else if tabs.selected > tabIdx {
