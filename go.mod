@@ -1,8 +1,6 @@
 module github.com/psanford/android-media-backup
 
-go 1.21
-
-toolchain go1.22.8
+go 1.22.3
 
 require (
 	gioui.org v0.7.1

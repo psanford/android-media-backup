@@ -32,7 +32,7 @@ func RequestPermission(viewEvt app.ViewEvent) <-chan PermResult {
 	pendingResults = append(pendingResults, pendingResult)
 	pendingResultMux.Unlock()
 
-	androidViewEvt := viewEvt.(*app.AndroidViewEvent)
+	androidViewEvt := viewEvt.(app.AndroidViewEvent)
 
 	go func() {
 		jvm := jni.JVMFor(app.JavaVM())
