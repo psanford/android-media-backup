@@ -39,8 +39,8 @@ public class Jni extends Fragment {
   @Override public void onAttach(Context ctx) {
     super.onAttach(ctx);
     Log.d("gio", "jni: onAttach()");
-    if (ctx.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-      requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.ACCESS_MEDIA_LOCATION}, PERMISSION_REQUEST);
+    if (ctx.checkSelfPermission(Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED) {
+      requestPermissions(new String[]{Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.ACCESS_MEDIA_LOCATION}, PERMISSION_REQUEST);
     } else {
       permissionResult(true);
     }
