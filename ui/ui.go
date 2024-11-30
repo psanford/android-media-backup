@@ -146,6 +146,11 @@ func (ui *UI) loop(w *app.Window) error {
 		case result := <-permResult:
 			permResult = nil
 			plog.Printf("Perm result: %t %s", result.Authorized, result.Err)
+			if result.Authorized {
+				plog.Printf("authorized: recheck files")
+				upload.ScanFiles(ui.db)
+				recheckStats()
+			}
 			w.Invalidate()
 
 		case logMsg := <-plog.MsgChan():
