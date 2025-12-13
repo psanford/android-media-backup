@@ -21,7 +21,9 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/psanford/android-media-backup/db"
 	"github.com/psanford/android-media-backup/jgo"
-	"github.com/psanford/android-media-backup/ui/plog"
+	"github.com/psanford/android-media-backup/jgo/wifi"
+	"github.com/psanford/android-media-backup/network"
+	"github.com/psanford/android-media-backup/plog"
 	"github.com/psanford/android-media-backup/upload"
 	"github.com/psanford/android-media-backup/version"
 )
@@ -31,6 +33,16 @@ type UI struct {
 }
 
 func New() *UI {
+	// Initialize directories from Gio's app package
+	dataDir, err := app.DataDir()
+	if err != nil {
+		panic(fmt.Sprintf("DataDir err: %s", err))
+	}
+
+	// Use jgo/androiddir for cache dir
+	cacheDir := jgo.GetCacheDir()
+	db.SetDirectories(dataDir, cacheDir)
+
 	store, err := db.Open()
 	if err != nil {
 		panic(fmt.Sprintf("Open db err: %s", err))
@@ -43,12 +55,7 @@ func New() *UI {
 func (ui *UI) Run() error {
 	w := new(app.Window)
 	w.Option(app.Size(unit.Dp(800), unit.Dp(700)))
-	dataDir, err := app.DataDir()
-	if err != nil {
-		plog.Printf("DataDir err: %s", err)
-	} else {
-		plog.Printf("DataDir: %s", dataDir)
-	}
+	plog.Printf("DataDir: %s", db.GetDataDir())
 
 	if err := jgo.StartBGWorker(); err != nil {
 		log.Fatal(err)
@@ -101,8 +108,19 @@ func (ui *UI) loop(w *app.Window) error {
 		minuteTicker = time.NewTicker(1 * time.Minute)
 	)
 
+	// syncNetworkState updates the network package with the current wifi state
+	syncNetworkState := func() {
+		state, err := wifi.ConnectionState()
+		if err != nil {
+			network.SetConnectionState(network.ConnStateUnknown)
+		} else {
+			network.SetConnectionState(network.ConnState(state))
+		}
+	}
+
 	go func() {
 		for result := range manualUpload {
+			syncNetworkState()
 			upload.Upload()
 			select {
 			case result <- struct{}{}:

@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"sync"
 	"time"
 
-	"gioui.org/app"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/psanford/android-media-backup/jgo/androiddir"
 	"github.com/retailnext/unixtime"
 )
 
@@ -18,11 +17,45 @@ type DB struct {
 	cacheDir string
 }
 
+var (
+	dataDir  string
+	cacheDir string
+	dirMu    sync.Mutex
+)
+
+// SetDirectories sets the data and cache directories.
+// Must be called before Open().
+func SetDirectories(data, cache string) {
+	dirMu.Lock()
+	defer dirMu.Unlock()
+	dataDir = data
+	cacheDir = cache
+}
+
+// GetDataDir returns the configured data directory.
+func GetDataDir() string {
+	dirMu.Lock()
+	defer dirMu.Unlock()
+	return dataDir
+}
+
+// GetCacheDir returns the configured cache directory.
+func GetCacheDir() string {
+	dirMu.Lock()
+	defer dirMu.Unlock()
+	return cacheDir
+}
+
 func Open() (*DB, error) {
-	dir, err := app.DataDir()
-	if err != nil {
-		return nil, err
+	dirMu.Lock()
+	dir := dataDir
+	cache := cacheDir
+	dirMu.Unlock()
+
+	if dir == "" {
+		return nil, fmt.Errorf("data directory not set, call SetDirectories first")
 	}
+
 	path := filepath.Join(dir, "mediabackup.db")
 	db, err := sql.Open("sqlite3", path)
 	if err != nil {
@@ -34,13 +67,11 @@ func Open() (*DB, error) {
 		return nil, err
 	}
 
-	cacheDir := androiddir.CacheDir()
-
-	log.Printf("cache dir: %s", cacheDir)
+	log.Printf("cache dir: %s", cache)
 
 	return &DB{
 		DB:       db,
-		cacheDir: cacheDir,
+		cacheDir: cache,
 	}, nil
 }
 
@@ -293,4 +324,9 @@ func (db *DB) UploadsSince(ts time.Time, state UploadState) (int, error) {
 	var count int
 	err := row.Scan(&count)
 	return count, err
+}
+
+// CacheDir returns the cache directory path.
+func (db *DB) CacheDir() string {
+	return db.cacheDir
 }

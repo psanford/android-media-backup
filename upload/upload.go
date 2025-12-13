@@ -16,8 +16,8 @@ import (
 	"time"
 
 	"github.com/psanford/android-media-backup/db"
-	"github.com/psanford/android-media-backup/jgo/wifi"
-	"github.com/psanford/android-media-backup/ui/plog"
+	"github.com/psanford/android-media-backup/network"
+	"github.com/psanford/android-media-backup/plog"
 )
 
 var mediaPath = "/sdcard/DCIM/Camera"
@@ -52,14 +52,14 @@ func Upload() error {
 			return errors.New("service disabled")
 		}
 
-		connState, err := wifi.ConnectionState()
-		if err != nil || connState == wifi.ConnStateUnknown || connState == wifi.NoNetwork {
+		connState := network.GetConnectionState()
+		if connState == network.ConnStateUnknown || connState == network.NoNetwork {
 			plog.Printf("no network connection, deferring remaining uploads")
 			return errors.New("no network")
 		}
 
 		allowMobile, _ := store.AllowMobileUpload()
-		if !allowMobile && connState < wifi.Wifi {
+		if !allowMobile && connState < network.Wifi {
 			plog.Printf("not on wifi, deferring remaining uploads")
 			return errors.New("no wifi")
 		}

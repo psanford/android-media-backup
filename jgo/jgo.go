@@ -13,6 +13,9 @@ import (
 	"gioui.org/app"
 	_ "gioui.org/app/permission/storage"
 	"git.wow.st/gmp/jni"
+	"github.com/psanford/android-media-backup/jgo/androiddir"
+	"github.com/psanford/android-media-backup/jgo/wifi"
+	"github.com/psanford/android-media-backup/network"
 	"github.com/psanford/android-media-backup/upload"
 )
 
@@ -111,10 +114,24 @@ func Java_io_sanford_media_1backup_Jni_permissionResult(env *C.JNIEnv, cls C.jcl
 //export Java_io_sanford_media_1backup_BackgroundWorker_runBackgroundJob
 func Java_io_sanford_media_1backup_BackgroundWorker_runBackgroundJob() {
 	log.Printf("begin upload work")
-	err := upload.Upload()
+
+	// Sync network state before upload
+	state, err := wifi.ConnectionState()
+	if err != nil {
+		network.SetConnectionState(network.ConnStateUnknown)
+	} else {
+		network.SetConnectionState(network.ConnState(state))
+	}
+
+	err = upload.Upload()
 	if err != nil {
 		log.Printf("upload work err: %s", err)
 	} else {
 		log.Printf("upload work complete")
 	}
+}
+
+// GetCacheDir returns the Android cache directory.
+func GetCacheDir() string {
+	return androiddir.CacheDir()
 }
