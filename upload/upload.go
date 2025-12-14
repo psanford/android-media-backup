@@ -13,6 +13,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/psanford/android-media-backup/db"
@@ -22,7 +24,15 @@ import (
 
 var mediaPath = "/sdcard/DCIM/Camera"
 
+var uploadMu sync.Mutex
+
 func Upload() error {
+	// Prevent concurrent uploads
+	if !uploadMu.TryLock() {
+		plog.Printf("upload already in progress, skipping")
+		return nil
+	}
+	defer uploadMu.Unlock()
 	store, err := db.Open()
 	if err != nil {
 		plog.Printf("open db err: %s", err)
@@ -250,6 +260,10 @@ func ScanFiles(store *db.DB) ([]fs.FileInfo, map[string]*db.File, error) {
 			continue
 		}
 		filename := f.Name()
+		// Skip trashed files
+		if strings.HasPrefix(filename, ".trashed-") {
+			continue
+		}
 		pp := filepath.Join(mediaPath, filename)
 		modTime := f.ModTime()
 		size := f.Size()

@@ -18,6 +18,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -34,6 +35,11 @@ fun SettingsScreen(
     val config by viewModel.config.collectAsState()
     val stats by viewModel.stats.collectAsState()
     val isUploading by viewModel.isUploading.collectAsState()
+
+    // Refresh stats when this screen becomes visible
+    LaunchedEffect(Unit) {
+        viewModel.refresh()
+    }
 
     Column(
         modifier = modifier

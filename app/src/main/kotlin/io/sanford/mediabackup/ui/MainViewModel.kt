@@ -7,10 +7,13 @@ import io.sanford.mediabackup.data.BackupConfig
 import io.sanford.mediabackup.data.BackupRepository
 import io.sanford.mediabackup.data.BackupStats
 import io.sanford.mediabackup.data.MediaFile
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -39,7 +42,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _config.value = repository.getConfig()
             _stats.value = repository.getStats()
+            repository.scanFiles()
             _files.value = repository.getFiles()
+
+            // Fetch any pending logs from refresh operations
+            val logs = withContext(Dispatchers.IO) {
+                repository.getPendingLogs()
+            }
+            if (logs.isNotEmpty()) {
+                logs.lines().filter { it.isNotBlank() }.forEach { addLog(it) }
+            }
         }
     }
 
@@ -90,13 +102,38 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _isUploading.value = true
             addLog("Starting upload...")
 
-            val result = repository.triggerUpload()
+            // Start a coroutine to poll for log messages while uploading
+            val logJob = launch {
+                while (_isUploading.value) {
+                    val logs = withContext(Dispatchers.IO) {
+                        repository.getPendingLogs()
+                    }
+                    if (logs.isNotEmpty()) {
+                        logs.lines().filter { it.isNotBlank() }.forEach { addLog(it) }
+                    }
+                    delay(100)
+                }
+            }
+
+            val result = withContext(Dispatchers.IO) {
+                repository.triggerUpload()
+            }
             result.fold(
                 onSuccess = { addLog("Upload completed") },
                 onFailure = { addLog("Upload failed: ${it.message}") }
             )
 
             _isUploading.value = false
+            logJob.cancel()
+
+            // Get any remaining logs
+            val remainingLogs = withContext(Dispatchers.IO) {
+                repository.getPendingLogs()
+            }
+            if (remainingLogs.isNotEmpty()) {
+                remainingLogs.lines().filter { it.isNotBlank() }.forEach { addLog(it) }
+            }
+
             refresh()
         }
     }

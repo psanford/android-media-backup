@@ -206,8 +206,14 @@ func (db *DB) StartUpload(name string) error {
 func (db *DB) EndUpload(name string, state UploadState) error {
 	ts := unixtime.ToUnix(time.Now(), time.Millisecond)
 
-	_, err := db.DB.Exec("update file set state = ?, upload_end_epoch_ms = ? where name = ?", state, ts, name)
-	return err
+	result, err := db.DB.Exec("update file set state = ?, upload_end_epoch_ms = ? where name = ?", state, ts, name)
+	if err != nil {
+		log.Printf("EndUpload error for %s: %v", name, err)
+		return err
+	}
+	rows, _ := result.RowsAffected()
+	log.Printf("EndUpload %s state=%d rows_affected=%d", name, state, rows)
+	return nil
 }
 
 func (db *DB) ResetFiles() error {
