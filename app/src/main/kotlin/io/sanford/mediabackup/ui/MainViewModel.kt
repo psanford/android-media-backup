@@ -3,10 +3,15 @@ package io.sanford.mediabackup.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
 import io.sanford.mediabackup.data.BackupConfig
 import io.sanford.mediabackup.data.BackupRepository
 import io.sanford.mediabackup.data.BackupStats
 import io.sanford.mediabackup.data.MediaFile
+import io.sanford.mediabackup.worker.UploadWorker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -98,44 +103,59 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun triggerUpload() {
         if (_isUploading.value) return
 
-        viewModelScope.launch {
-            _isUploading.value = true
-            addLog("Starting upload...")
+        _isUploading.value = true
+        addLog("Starting upload...")
 
-            // Start a coroutine to poll for log messages while uploading
-            val logJob = launch {
-                while (_isUploading.value) {
+        // Use WorkManager with foreground service for reliable uploads
+        val uploadRequest = OneTimeWorkRequestBuilder<UploadWorker>()
+            .addTag(MANUAL_UPLOAD_TAG)
+            .build()
+
+        val workManager = WorkManager.getInstance(getApplication())
+        workManager.enqueueUniqueWork(
+            MANUAL_UPLOAD_TAG,
+            ExistingWorkPolicy.KEEP,
+            uploadRequest
+        )
+
+        // Observe work status
+        viewModelScope.launch {
+            workManager.getWorkInfoByIdFlow(uploadRequest.id).collect { workInfo ->
+                // Poll for logs while running
+                if (workInfo?.state == WorkInfo.State.RUNNING) {
                     val logs = withContext(Dispatchers.IO) {
                         repository.getPendingLogs()
                     }
                     if (logs.isNotEmpty()) {
                         logs.lines().filter { it.isNotBlank() }.forEach { addLog(it) }
                     }
-                    delay(100)
+                }
+
+                // Handle completion
+                if (workInfo?.state?.isFinished == true) {
+                    // Get any remaining logs
+                    val remainingLogs = withContext(Dispatchers.IO) {
+                        repository.getPendingLogs()
+                    }
+                    if (remainingLogs.isNotEmpty()) {
+                        remainingLogs.lines().filter { it.isNotBlank() }.forEach { addLog(it) }
+                    }
+
+                    when (workInfo.state) {
+                        WorkInfo.State.SUCCEEDED -> addLog("Upload completed")
+                        WorkInfo.State.FAILED -> addLog("Upload failed")
+                        WorkInfo.State.CANCELLED -> addLog("Upload cancelled")
+                        else -> {}
+                    }
+                    _isUploading.value = false
+                    refresh()
                 }
             }
-
-            val result = withContext(Dispatchers.IO) {
-                repository.triggerUpload()
-            }
-            result.fold(
-                onSuccess = { addLog("Upload completed") },
-                onFailure = { addLog("Upload failed: ${it.message}") }
-            )
-
-            _isUploading.value = false
-            logJob.cancel()
-
-            // Get any remaining logs
-            val remainingLogs = withContext(Dispatchers.IO) {
-                repository.getPendingLogs()
-            }
-            if (remainingLogs.isNotEmpty()) {
-                remainingLogs.lines().filter { it.isNotBlank() }.forEach { addLog(it) }
-            }
-
-            refresh()
         }
+    }
+
+    companion object {
+        private const val MANUAL_UPLOAD_TAG = "manual_upload"
     }
 
     fun resetFailedUploads() {

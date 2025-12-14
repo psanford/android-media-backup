@@ -3,6 +3,7 @@ package io.sanford.mediabackup.worker
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.os.PowerManager
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -16,10 +17,15 @@ class UploadWorker(
     params: WorkerParameters
 ) : CoroutineWorker(context, params) {
 
+    private var wakeLock: PowerManager.WakeLock? = null
+
     override suspend fun doWork(): Result {
         Log.d(TAG, "Starting upload work")
 
         try {
+            // Acquire wake lock to prevent CPU from sleeping
+            acquireWakeLock()
+
             // Update network state before upload
             updateNetworkState()
 
@@ -31,7 +37,38 @@ class UploadWorker(
         } catch (e: Exception) {
             Log.e(TAG, "Upload work failed", e)
             return Result.retry()
+        } finally {
+            releaseWakeLock()
         }
+    }
+
+    private fun acquireWakeLock() {
+        try {
+            val powerManager = applicationContext.getSystemService(Context.POWER_SERVICE) as PowerManager
+            wakeLock = powerManager.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK,
+                "MediaBackup::UploadWakeLock"
+            ).apply {
+                acquire(30 * 60 * 1000L) // 30 minutes max
+            }
+            Log.d(TAG, "Wake lock acquired")
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not acquire wake lock: ${e.message}")
+        }
+    }
+
+    private fun releaseWakeLock() {
+        try {
+            wakeLock?.let {
+                if (it.isHeld) {
+                    it.release()
+                    Log.d(TAG, "Wake lock released")
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Error releasing wake lock: ${e.message}")
+        }
+        wakeLock = null
     }
 
     private fun updateNetworkState() {
