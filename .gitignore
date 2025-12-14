@@ -1,9 +1,21 @@
 *.apk
 *.apk.idsig
+
+# Legacy Gio-based Android project
 android/build/
 android/.gradle
 android/libs/
 
+# New Kotlin/Compose Android project
+app/build/
+app/libs/
+.gradle/
+local.properties
+
 # Nix
 result
 result-*
+
+# IDE
+.idea/
+*.iml
