@@ -34,6 +34,9 @@ fun FilesScreen(
 ) {
     val files by viewModel.files.collectAsState()
 
+    // Sort by creation time, newest first
+    val sortedFiles = files.sortedByDescending { it.createdMs }
+
     if (files.isEmpty()) {
         Column(
             modifier = modifier
@@ -53,7 +56,7 @@ fun FilesScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(files) { file ->
+            items(sortedFiles) { file ->
                 FileCard(file = file)
             }
         }

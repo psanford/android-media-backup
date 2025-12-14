@@ -2,8 +2,8 @@ package io.sanford.mediabackup.ui
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BugReport
-import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -27,8 +27,8 @@ data class NavItem(
 fun MainScreen(viewModel: MainViewModel) {
     val navItems = listOf(
         NavItem("Settings", Icons.Default.Settings),
-        NavItem("Files", Icons.Default.Folder),
-        NavItem("Debug", Icons.Default.BugReport)
+        NavItem("Files", Icons.Default.List),
+        NavItem("Debug", Icons.Default.Build)
     )
 
     var selectedIndex by remember { mutableIntStateOf(0) }
