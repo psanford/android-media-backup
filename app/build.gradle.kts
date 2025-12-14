@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace = "io.sanford.mediabackup"
-    compileSdk = 35
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "io.sanford.mediabackup"
         minSdk = 23
-        targetSdk = 35
+        targetSdk = 34
         versionCode = 1
         versionName = "2.0.0"
 
@@ -41,6 +41,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     composeOptions {

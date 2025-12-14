@@ -11,6 +11,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.6
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/retailnext/unixtime v0.0.0-20171004230528-01070448a2fe
+	golang.org/x/mobile v0.0.0-20231127183840-76ac6878050a
 )
 
 require (

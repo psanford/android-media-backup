@@ -14,11 +14,21 @@ $(GIO_AAR): $(shell find . -name '*.go' -o -name '*.java' -type f)
 # New gomobile-based build
 MOBILE_AAR=app/libs/mobile.aar
 VERSION=$(shell date --rfc-3339=seconds)
+TOOLSBIN=$(shell pwd)/.tools/bin
+GOMOBILE=$(TOOLSBIN)/gomobile
+
+# Initialize gomobile (one-time setup)
+.PHONY: init
+init:
+	mkdir -p $(TOOLSBIN)
+	GOBIN=$(TOOLSBIN) go install golang.org/x/mobile/cmd/gomobile
+	GOBIN=$(TOOLSBIN) go install golang.org/x/mobile/cmd/gobind
+	PATH=$(TOOLSBIN):$(PATH) $(GOMOBILE) init
 
 # Build the Go mobile AAR library
 $(MOBILE_AAR): $(shell find . -path ./app -prune -o -path ./android -prune -o -name '*.go' -print)
 	mkdir -p $(@D)
-	gomobile bind -v -o $@ -target=android -androidapi 23 \
+	PATH=$(TOOLSBIN):$(PATH) $(GOMOBILE) bind -v -o $@ -target=android -androidapi 23 \
 		-ldflags "-X 'github.com/psanford/android-media-backup/version.Version=$(VERSION)'" \
 		./mobile
 
@@ -47,6 +57,7 @@ clean:
 .PHONY: help
 help:
 	@echo "Available targets:"
+	@echo "  init         - Initialize gomobile (one-time setup)"
 	@echo "  apk          - Build debug APK (new Kotlin/Compose version)"
 	@echo "  apk-release  - Build release APK (unsigned)"
 	@echo "  go-aar       - Build Go mobile AAR only"
