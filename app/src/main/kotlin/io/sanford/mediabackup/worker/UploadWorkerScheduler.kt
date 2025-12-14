@@ -37,7 +37,7 @@ object UploadWorkerScheduler {
 
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
             WORK_NAME,
-            ExistingPeriodicWorkPolicy.KEEP,
+            ExistingPeriodicWorkPolicy.UPDATE, // Update if constraints changed
             uploadRequest
         )
 
