@@ -2,9 +2,10 @@
 OTHER_JARS=./jars/work-runtime-2.5.0-sources.jar
 GIO_AAR=android/libs/android-media-backup.aar
 
+.PHONY: gio-apk
 gio-apk: $(GIO_AAR)
 	(cd android && ./gradlew assembleDebug)
-	mv android/build/outputs/apk/debug/android-debug.apk media-backup.apk
+	mv android/build/outputs/apk/debug/android-debug.apk media-backup-gio.apk
 
 $(GIO_AAR): $(shell find . -name '*.go' -o -name '*.java' -type f)
 	mkdir -p $(@D)
@@ -14,12 +15,8 @@ $(GIO_AAR): $(shell find . -name '*.go' -o -name '*.java' -type f)
 MOBILE_AAR=app/libs/mobile.aar
 VERSION=$(shell date --rfc-3339=seconds)
 
-.PHONY: gomobile-init
-gomobile-init:
-	go install golang.org/x/mobile/cmd/gomobile@latest
-	gomobile init
-
-$(MOBILE_AAR): $(shell find . -name '*.go' -type f) gomobile-init
+# Build the Go mobile AAR library
+$(MOBILE_AAR): $(shell find . -path ./app -prune -o -path ./android -prune -o -name '*.go' -print)
 	mkdir -p $(@D)
 	gomobile bind -v -o $@ -target=android -androidapi 23 \
 		-ldflags "-X 'github.com/psanford/android-media-backup/version.Version=$(VERSION)'" \
@@ -28,11 +25,30 @@ $(MOBILE_AAR): $(shell find . -name '*.go' -type f) gomobile-init
 .PHONY: go-aar
 go-aar: $(MOBILE_AAR)
 
+# Build the Android APK (new Kotlin/Compose version)
 .PHONY: apk
 apk: $(MOBILE_AAR)
-	(cd app && ../gradlew assembleDebug)
+	./gradlew :app:assembleDebug
 	cp app/build/outputs/apk/debug/app-debug.apk media-backup.apk
+	@echo "Built media-backup.apk"
+
+# Build release APK
+.PHONY: apk-release
+apk-release: $(MOBILE_AAR)
+	./gradlew :app:assembleRelease
+	cp app/build/outputs/apk/release/app-release-unsigned.apk media-backup-release.apk
+	@echo "Built media-backup-release.apk (unsigned)"
 
 .PHONY: clean
 clean:
-	rm -rf $(GIO_AAR) $(MOBILE_AAR) media-backup.apk app/build android/build
+	rm -rf $(GIO_AAR) $(MOBILE_AAR) media-backup.apk media-backup-gio.apk media-backup-release.apk
+	rm -rf app/build android/build .gradle
+
+.PHONY: help
+help:
+	@echo "Available targets:"
+	@echo "  apk          - Build debug APK (new Kotlin/Compose version)"
+	@echo "  apk-release  - Build release APK (unsigned)"
+	@echo "  go-aar       - Build Go mobile AAR only"
+	@echo "  gio-apk      - Build legacy Gio-based APK"
+	@echo "  clean        - Remove build artifacts"

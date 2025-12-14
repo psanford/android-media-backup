@@ -32,9 +32,11 @@
           buildInputs = with pkgs; [
             # Go
             go_1_25
+            gomobile
 
             # Java
             openjdk21
+            gradle
 
             # Android SDK
             androidSdk
@@ -45,13 +47,14 @@
 
           shellHook = ''
             export ANDROID_SDK_ROOT="${androidSdk}/libexec/android-sdk"
-            export ANDROID_NDK_ROOT="${androidSdk}/libexec/android-sdk/ndk-bundle"
+            export ANDROID_NDK_ROOT="${androidSdk}/libexec/android-sdk/ndk/27.2.12479018"
             export GRADLE_OPTS="-Dorg.gradle.project.android.aapt2FromMavenOverride=${androidSdk}/libexec/android-sdk/build-tools/${buildToolsVersion}/aapt2"
 
             echo "Android Media Backup development environment"
             echo "  Go:          $(go version)"
             echo "  Java:        $(java -version 2>&1 | head -1)"
             echo "  Android SDK: $ANDROID_SDK_ROOT"
+            echo "  Android NDK: $ANDROID_NDK_ROOT"
           '';
         };
       }
