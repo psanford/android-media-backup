@@ -10,6 +10,7 @@ import (
 
 	"github.com/psanford/android-media-backup/db"
 	"github.com/psanford/android-media-backup/network"
+	"github.com/psanford/android-media-backup/plog"
 	"github.com/psanford/android-media-backup/upload"
 )
 
@@ -191,6 +192,8 @@ func GetStats() (*Stats, error) {
 	recent, _ := store.UploadsSince(time.Now().Add(-30*24*time.Hour), db.UploadSuccess)
 	recentFailed, _ := store.UploadsSince(time.Now().Add(-30*24*time.Hour), db.UploadFailed)
 
+	plog.Printf("GetStats: pending=%d recent=%d failed=%d", pending, recent, recentFailed)
+
 	return &Stats{
 		LastSyncTimeMS:      lastSync.UnixMilli(),
 		LastUploadTimeMS:    lastUpload.UnixMilli(),
@@ -291,4 +294,18 @@ func GetThumbnailPath(filename string) string {
 	}
 
 	return store.CacheDir() + "/" + filename
+}
+
+// GetPendingLogs returns any pending log messages from the Go backend.
+// Returns empty string if no messages are pending.
+func GetPendingLogs() string {
+	var msgs string
+	for {
+		select {
+		case msg := <-plog.MsgChan():
+			msgs += msg
+		default:
+			return msgs
+		}
+	}
 }

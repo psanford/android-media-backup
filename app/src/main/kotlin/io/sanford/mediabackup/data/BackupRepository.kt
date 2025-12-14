@@ -57,6 +57,7 @@ class BackupRepository(private val context: Context) {
     suspend fun getStats(): BackupStats = withContext(Dispatchers.IO) {
         try {
             val stats = Mobile.getStats()
+            Log.d(TAG, "getStats: pending=${stats.pendingUploads} recent=${stats.recentUploads}")
             BackupStats(
                 lastSyncTimeMs = stats.lastSyncTimeMS,
                 lastUploadTimeMs = stats.lastUploadTimeMS,
@@ -156,6 +157,18 @@ class BackupRepository(private val context: Context) {
             capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> Mobile.NetworkNotWifi.toInt()
             capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> Mobile.NetworkWifi.toInt()
             else -> Mobile.NetworkStateUnknown.toInt()
+        }
+    }
+
+    /**
+     * Get pending log messages from the Go backend.
+     */
+    fun getPendingLogs(): String {
+        return try {
+            Mobile.getPendingLogs()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting pending logs", e)
+            ""
         }
     }
 

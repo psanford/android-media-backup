@@ -1,5 +1,5 @@
 // Package plog provides a simple logging system that can buffer messages
-// for display in the UI.
+// for display in the UI. On Android, messages are also sent to logcat.
 package plog
 
 import (
@@ -13,9 +13,11 @@ var (
 )
 
 // Printf logs a formatted message and queues it for UI display.
+// On Android, this also writes to logcat via the standard log package.
 func Printf(format string, args ...interface{}) {
 	str := fmt.Sprintf(format, args...)
-	log.Print(str)
+	// log.Print writes to stderr which Android routes to logcat
+	log.Print("mediabackup: " + str)
 	msg := fmt.Sprintf("[%s] %s\n", time.Now().Format(time.RFC3339), str)
 
 	select {
