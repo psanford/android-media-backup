@@ -1,12 +1,13 @@
 *.apk
 *.apk.idsig
 
-# Legacy Gio-based Android project
-android/build/
-android/.gradle
-android/libs/
+# Build tools
+.tools/
 
-# New Kotlin/Compose Android project
+# Decompiled APKs
+decompile/
+
+# Android project
 app/build/
 app/libs/
 .gradle/
