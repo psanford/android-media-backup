@@ -1,5 +1,6 @@
 # Android Media Backup - Makefile
 
+export ANDROID_HOME ?= $(ANDROID_SDK_ROOT)
 MOBILE_AAR=app/libs/mobile.aar
 VERSION=$(shell date --rfc-3339=seconds)
 TOOLSBIN=$(shell pwd)/.tools/bin
