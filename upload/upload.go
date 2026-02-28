@@ -79,11 +79,17 @@ func Upload() error {
 		}
 
 		filename := f.Name()
+		if strings.HasPrefix(filename, ".trashed-") {
+			continue
+		}
 		fpath := filepath.Join(mediaPath, filename)
 		modTime := f.ModTime()
 		size := f.Size()
 
 		dbFile := dbFilesMap[filename]
+		if dbFile == nil {
+			continue
+		}
 
 		if dbFile.State == db.UploadInProgress {
 			plog.Printf("upload already in-progress for %s, this probably needs to be retired", dbFile.Name)
